@@ -25,7 +25,7 @@ program wordle
            if (mod(nlines,1000).eq.0) then
               print*,i,' = ',prob(i)
            endif
-           if (prob(i).lt.97) then
+           if ((prob(i).lt.97).or.(prob(i).gt.122)) then
               print*,line
            endif
         enddo
