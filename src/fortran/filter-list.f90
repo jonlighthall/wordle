@@ -31,8 +31,9 @@ program filter
      endif
      if (ierr<0) then
         print'(/a)','EOF'
-        print 1,'    number of lines = ',nlines
-        print 1,'longest word length = ',mxlen
+        print 1,'      number of lines = ',nlines
+        print 1,'  longest word length = ',mxlen
+        print 1,'number of len=5 words = ',n5
 1       format(a,i7)
         exit
      endif
