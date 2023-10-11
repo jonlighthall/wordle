@@ -46,4 +46,19 @@ program wordle
   idx=maxloc(max_count,1)
   print '(3a,i1)','the overall most likely letter is ''',mode(idx:idx),''' in position ',idx
   close(read_unit)
+
+  ! calcualte probability for each position
+  ! the sum of each positions's probability shoudl be the same
+  
+  !then rewind and loop through the word list again
+  ! assign each word a likelyhood probabilty based on the calculated probability fore each letter
+  ! that is, sum the per-letter probability
+  ! this will give you the most lieky word(s)
+
+  ! then ask for user input
+  ! recycle through the list matching letters and postions
+  ! inputs 0,1,2
+  ! eg 01120
+  
+  
 end program wordle
