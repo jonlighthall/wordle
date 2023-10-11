@@ -2,7 +2,7 @@
 program wordle
   implicit none
   integer(kind=4) :: read_unit,ierr,i,nlines = 0,ilet,idx
-  integer,parameter :: wl=5
+  integer,parameter :: wl=5 ! word length
   integer(kind=4),dimension(wl) :: max_count,max_let,max_char
   character(len=wl) :: line,mode
   integer,dimension(wl,26) :: counts = 0
@@ -12,11 +12,15 @@ program wordle
   do
      read(read_unit,'(a)',iostat=ierr) line
      if (ierr.eq.0) then
+        ! print every Nth line
         if (mod(nlines,1000).eq.0) then
            print*,line
         endif
+        ! scan through each word
         do i=1,wl
+           ! extract letter
            ilet=ichar(line(i:i),kind(ilet))
+           ! increment counter
            counts(i,ilet-96) = counts(i,ilet-96) + 1
         enddo
         nlines = nlines + 1
@@ -24,18 +28,22 @@ program wordle
         print'(/a)','EOF'
         print 1,'      number of lines = ',nlines
 1       format(a,i7)
+        print '(1x,a)','count pos ascii letter'
+        ! loop over every position
         do i=1,wl
+           ! get most-found letter
            max_count(i)=maxval(counts(i,:))
            max_let(i)=maxloc(counts(i,:),1)
-           max_char(i)=max_let(i)+96
+           ! convert to ASCII
+           max_char(i)=max_let(i)+96           
            mode(i:i)=char(max_char(i))
-           print '(1x,i4,1x,i2,1x,i3,1x,a)',max_count(i),max_let(i),max_char(i),mode(i:i)
+           print '(1x,i5,1x,i3,1x,i5,1x,a)',max_count(i),max_let(i),max_char(i),mode(i:i)
         enddo
         print*,mode
         exit
      endif
   enddo
   idx=maxloc(max_count,1)
-  print '(3a,i1)','the most likely letter is ''',mode(idx:idx),''' in position ',idx
+  print '(3a,i1)','the overall most likely letter is ''',mode(idx:idx),''' in position ',idx
   close(read_unit)
 end program wordle
