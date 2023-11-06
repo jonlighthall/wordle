@@ -48,7 +48,7 @@ program wordle
   close(read_unit)
 
   ! calcualte probability for each position
-  ! the sum of each positions's probability shoudl be the same
+  ! the sum of each positions's probability should be the same
   
   !then rewind and loop through the word list again
   ! assign each word a likelyhood probabilty based on the calculated probability fore each letter
