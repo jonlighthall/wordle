@@ -396,14 +396,13 @@ def interactive_mode():
         print("Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)")
         print("Special: R=Rejected (if Wordle doesn't accept the word)")
         print("Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray")
-        print("If Wordle rejects a word, just type 'R' and we'll remove it and suggest another word.\n")
+        print("If Wordle rejects a word, just type 'R' and we'll remove it and suggest another word.")
+        print("Note: Rejected words don't count toward your 6-guess limit!\n")
 
         attempt = 0
         max_attempts = 6  # Standard Wordle limit
 
         while attempt < max_attempts:
-            attempt += 1
-
             # Get AI suggestion
             if guess_method == "random":
                 suggestion = solver.choose_guess_random()
@@ -412,7 +411,7 @@ def interactive_mode():
             else:  # frequency
                 suggestion = solver.choose_guess_frequency(start_strategy=start_strategy)
 
-            print(f"🤖 Guess {attempt}: I suggest '{suggestion.upper()}'")
+            print(f"🤖 Guess {attempt + 1}: I suggest '{suggestion.upper()}'")
 
             # Get user's actual guess
             while True:
@@ -433,7 +432,7 @@ def interactive_mode():
                 if feedback_input == 'R':
                     print(f"   '{user_guess.upper()}' was rejected by Wordle - removing from word list")
                     solver.remove_rejected_word(user_guess)
-                    print("   Generating new suggestion...")
+                    print("   Generating new suggestion... (this doesn't count as a guess)")
                     break  # Exit feedback loop to get new suggestion
 
                 # Check for valid feedback
@@ -444,9 +443,12 @@ def interactive_mode():
                 else:
                     print("Please enter exactly 5 characters using G/Y/X (uppercase or lowercase), or 'R' if rejected.")
 
-            # If word was rejected, continue to get new suggestion
+            # If word was rejected, continue to get new suggestion (don't increment attempt)
             if feedback_input == 'R':
                 continue  # Go back to get new suggestion
+
+            # Only increment attempt counter for accepted words
+            attempt += 1
 
             # Check if solved
             if feedback == "GGGGG":
