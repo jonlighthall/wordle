@@ -97,9 +97,8 @@ class WordleSolver:
         if len(self.guesses) == 0:
             return "crane"  # Hardcoded first guess for simplicity
 
-        best_guess = None
-        best_entropy = -1
-
+        # Calculate entropy for all words and find the best ones
+        word_entropies = []
         for guess in self.possible_words:
             pattern_counts = Counter()
             for possible_target in self.possible_words:
@@ -112,11 +111,22 @@ class WordleSolver:
                 probability = count / total_words
                 entropy -= probability * math.log2(probability) if probability > 0 else 0
 
-            if entropy > best_entropy:
-                best_entropy = entropy
-                best_guess = guess
+            word_entropies.append((guess, entropy))
 
-        return best_guess
+        # Find the maximum entropy
+        max_entropy = max(entropy for _, entropy in word_entropies)
+
+        # Get all words with the maximum entropy
+        top_words = [word for word, entropy in word_entropies if entropy == max_entropy]
+
+        # Handle ties and print results
+        if len(top_words) > 1:
+            print(f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f}: {top_words}")
+            # For entropy ties, just pick the first one (they're all equally good)
+            return top_words[0]
+        else:
+            print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f}")
+            return top_words[0]
 
     def choose_guess_frequency(self) -> str:
         """Choose a guess based on letter frequency in each position."""
@@ -133,17 +143,48 @@ class WordleSolver:
                 freq[i][char] += 1
 
         # Score each word based on letter frequencies
-        best_guess = None
-        best_score = -1
+        word_scores = []
         for word in self.possible_words:
             score = 0
             for i, char in enumerate(word):
                 score += freq[i][char]  # Sum frequency of each letter in its position
-            if score > best_score:
-                best_score = score
-                best_guess = word
+            word_scores.append((word, score))
 
-        return best_guess
+        # Find the maximum score
+        max_score = max(score for _, score in word_scores)
+
+        # Get all words with the maximum score
+        top_words = [word for word, score in word_scores if score == max_score]
+
+        # Handle ties and print results
+        if len(top_words) > 1:
+            print(f"    Tie between {len(top_words)} words with frequency score {max_score}: {top_words}")
+
+            # Use entropy to break ties
+            best_guess = None
+            best_entropy = -1
+
+            for guess in top_words:
+                pattern_counts = Counter()
+                for possible_target in self.possible_words:
+                    feedback = self.get_feedback(guess, possible_target)
+                    pattern_counts[feedback] += 1
+
+                total_words = len(self.possible_words)
+                entropy = 0
+                for count in pattern_counts.values():
+                    probability = count / total_words
+                    entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+                if entropy > best_entropy:
+                    best_entropy = entropy
+                    best_guess = guess
+
+            print(f"    Selected '{best_guess}' based on entropy ({best_entropy:.3f})")
+            return best_guess
+        else:
+            print(f"    Best word: '{top_words[0]}' with frequency score {max_score}")
+            return top_words[0]
 
     def choose_guess_likelihood(self) -> str:
         """Choose a guess based on letter likelihood in each position with tie-breaking."""
