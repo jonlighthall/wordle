@@ -65,10 +65,20 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
 
     return freq_score, likelihood_score
 
-def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False) -> List[Tuple[str, int, float, float]]:
+def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False) -> List[Tuple[str, int, float, float]]:
     """Find the words with the highest (or lowest) frequency scores."""
     analysis_type = "lowest" if find_lowest else "highest"
     print(f"Calculating {analysis_type} frequency scores for {len(word_list)} words...")
+
+    # OPTIMIZED: Calculate frequencies once for the entire word list
+    word_length = 5
+    freq = [Counter() for _ in range(word_length)]
+
+    for word in word_list:
+        for i, char in enumerate(word):
+            freq[i][char] += 1
+
+    print(f"Frequency analysis complete. Now scoring {len(word_list)} words...")
 
     word_scores = []
 
@@ -76,23 +86,39 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
         if i % 1000 == 0 and len(word_list) > 1000:
             print(f"Progress: {i}/{len(word_list)} words processed...")
 
-        freq_score, likelihood_score = calculate_frequency_score(word, word_list)
-        entropy = calculate_entropy(word, word_list)
+        # OPTIMIZED: Simple arithmetic using pre-calculated frequencies
+        freq_score = sum(freq[i][word[i]] for i in range(word_length))
+        likelihood_score = freq_score / len(word_list)
+
+        # Only calculate entropy if explicitly requested (much slower)
+        if calculate_entropy_upfront:
+            entropy = calculate_entropy(word, word_list)
+        else:
+            entropy = 0.0  # Placeholder - will calculate only for top words if needed
+
         word_scores.append((word, freq_score, likelihood_score, entropy))
 
     # Sort by frequency score (lowest first if find_lowest, highest first otherwise)
     word_scores.sort(key=lambda x: x[1], reverse=not find_lowest)
+
+    # If entropy wasn't calculated upfront, calculate it only for the top words
+    if not calculate_entropy_upfront:
+        print(f"Calculating entropy for top {top_n} words...")
+        top_words = word_scores[:top_n]
+        for i, (word, freq_score, likelihood_score, _) in enumerate(top_words):
+            entropy = calculate_entropy(word, word_list)
+            word_scores[i] = (word, freq_score, likelihood_score, entropy)
 
     return word_scores[:top_n]
 
 def main():
     # Load word list from file
     try:
-        with open("/home/jlighthall/examp/common/words_alpha5_100.txt", "r") as f:
+        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
             word_list = [word.strip() for word in f.readlines()]
         print(f"Loaded {len(word_list)} words from file")
     except FileNotFoundError:
-        print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5_100.txt")
+        print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5.txt")
         return
 
     # Find highest frequency words
