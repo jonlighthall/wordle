@@ -89,17 +89,24 @@ class WordleSolver:
             return "crane"  # Common first guess in Wordle (hardcoded for simplicity)
         return random.choice(self.possible_words)
 
-    def choose_guess_entropy(self) -> str:
+    def choose_guess_entropy(self, use_optimal_start: bool = False) -> str:
         """Choose a guess based on maximum entropy."""
         if not self.possible_words:
             print("    No possible words left, using random from full list")
             return random.choice(self.word_list)
+
+        # Handle first guess
         if len(self.guesses) == 0:
-            return "crane"  # Hardcoded first guess for simplicity
+            if not use_optimal_start:
+                return "crane"  # Hardcoded first guess for simplicity
+            else:
+                print("    Computing optimal entropy-based first guess from full word list...")
 
         # Calculate entropy for all words and find the best ones
+        search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
         word_entropies = []
-        for guess in self.possible_words:
+
+        for guess in search_space:
             pattern_counts = Counter()
             for possible_target in self.possible_words:
                 feedback = self.get_feedback(guess, possible_target)
@@ -121,119 +128,83 @@ class WordleSolver:
 
         # Handle ties and print results
         if len(top_words) > 1:
-            print(f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f}: {top_words}")
+            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            print(f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f} from {search_desc}: {top_words}")
             # For entropy ties, just pick the first one (they're all equally good)
             return top_words[0]
         else:
-            print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f}")
+            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f} from {search_desc}")
             return top_words[0]
 
-    def choose_guess_frequency(self) -> str:
-        """Choose a guess based on letter frequency in each position."""
+    def choose_guess_frequency(self, use_optimal_start: bool = False, start_strategy: str = "crane") -> str:
+        """Choose a guess based on letter frequency/likelihood in each position with entropy tie-breaking."""
         if not self.possible_words:
             print("    No possible words left, using random from full list")
             return random.choice(self.word_list)
-        if len(self.guesses) == 0:
-            return "crane"  # Hardcoded first guess
 
-        # Calculate letter frequencies for each position
+        # Handle first guess with different strategies
+        if len(self.guesses) == 0:
+            if start_strategy == "crane":
+                return "crane"  # Hardcoded first guess
+            elif start_strategy == "random":
+                chosen = random.choice(self.word_list)
+                print(f"    Random first guess: '{chosen}'")
+                return chosen
+            elif start_strategy == "highest":
+                print("    Computing highest frequency-based first guess from full word list...")
+                use_optimal_start = True  # Force optimal computation
+            elif start_strategy == "lowest":
+                print("    Computing lowest frequency-based first guess from full word list...")
+                use_optimal_start = True  # Force optimal computation
+            else:
+                return "crane"  # Default fallback
+
+        # Calculate letter frequencies for each position (equivalent to likelihood matrix)
+        search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
+        total_words = len(self.possible_words)
         freq = [Counter() for _ in range(self.word_length)]
-        for word in self.possible_words:
+
+        for word in search_space:
             for i, char in enumerate(word):
                 freq[i][char] += 1
 
-        # Score each word based on letter frequencies
+        # Score each word based on letter frequencies (raw counts work same as probabilities for ranking)
         word_scores = []
-        for word in self.possible_words:
-            score = 0
-            for i, char in enumerate(word):
-                score += freq[i][char]  # Sum frequency of each letter in its position
-            word_scores.append((word, score))
+        for word in search_space:
+            # Calculate both raw frequency score and normalized likelihood score for display
+            freq_score = sum(freq[i][word[i]] for i in range(self.word_length))
+            likelihood_score = freq_score / len(search_space)  # Normalized version
+            word_scores.append((word, freq_score, likelihood_score))
 
-        # Find the maximum score
-        max_score = max(score for _, score in word_scores)
-
-        # Get all words with the maximum score
-        top_words = [word for word, score in word_scores if score == max_score]
+        # For first guess with lowest strategy, find minimum instead of maximum
+        if len(self.guesses) == 0 and start_strategy == "lowest":
+            target_score = min(freq_score for _, freq_score, _ in word_scores)
+            target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
+                           if freq_score == target_score]
+            search_desc = "full word list (lowest frequency)"
+        else:
+            # Find the maximum frequency score (normal case)
+            target_score = max(freq_score for _, freq_score, _ in word_scores)
+            target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
+                           if freq_score == target_score]
+            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
 
         # Handle ties and print results
-        if len(top_words) > 1:
-            print(f"    Tie between {len(top_words)} words with frequency score {max_score}: {top_words}")
+        if len(target_words) > 1:
+            word_list = [word for word, _, _ in target_words]
+            likelihood_score = target_words[0][2]  # All tied words have same likelihood score
+            score_type = "lowest" if (len(self.guesses) == 0 and start_strategy == "lowest") else "highest"
+            print(f"    Tie between {len(target_words)} words with {score_type} frequency score {target_score} (likelihood {likelihood_score:.3f}) from {search_desc}: {word_list}")
 
             # Use entropy to break ties
             best_guess = None
             best_entropy = -1
 
-            for guess in top_words:
+            for word, _, _ in target_words:
                 pattern_counts = Counter()
                 for possible_target in self.possible_words:
-                    feedback = self.get_feedback(guess, possible_target)
-                    pattern_counts[feedback] += 1
-
-                total_words = len(self.possible_words)
-                entropy = 0
-                for count in pattern_counts.values():
-                    probability = count / total_words
-                    entropy -= probability * math.log2(probability) if probability > 0 else 0
-
-                if entropy > best_entropy:
-                    best_entropy = entropy
-                    best_guess = guess
-
-            print(f"    Selected '{best_guess}' based on entropy ({best_entropy:.3f})")
-            return best_guess
-        else:
-            print(f"    Best word: '{top_words[0]}' with frequency score {max_score}")
-            return top_words[0]
-
-    def choose_guess_likelihood(self) -> str:
-        """Choose a guess based on letter likelihood in each position with tie-breaking."""
-        if not self.possible_words:
-            print("    No possible words left, using random from full list")
-            return random.choice(self.word_list)
-        if len(self.guesses) == 0:
-            return "crane"  # Hardcoded first guess
-
-        # Step 1: Calculate likelihood matrix (5x26 array of probabilities)
-        total_words = len(self.possible_words)
-        likelihood_matrix = []
-
-        for pos in range(self.word_length):
-            letter_counts = Counter()
-            for word in self.possible_words:
-                letter_counts[word[pos]] += 1
-
-            # Convert counts to likelihoods (probabilities)
-            position_likelihoods = {}
-            for letter in 'abcdefghijklmnopqrstuvwxyz':
-                position_likelihoods[letter] = letter_counts.get(letter, 0) / total_words
-
-            likelihood_matrix.append(position_likelihoods)
-
-        # Step 2: Score each word based on cumulative likelihood
-        word_scores = {}
-        for word in self.possible_words:
-            score = 0
-            for i, char in enumerate(word):
-                score += likelihood_matrix[i][char]
-            word_scores[word] = score
-
-        # Step 3: Find words with the highest score
-        max_score = max(word_scores.values())
-        top_words = [word for word, score in word_scores.items() if score == max_score]
-
-        # Step 4: Handle ties
-        if len(top_words) > 1:
-            print(f"    Tie between {len(top_words)} words with score {max_score:.3f}: {top_words}")
-
-            # Use entropy to break ties
-            best_guess = None
-            best_entropy = -1
-
-            for guess in top_words:
-                pattern_counts = Counter()
-                for possible_target in self.possible_words:
-                    feedback = self.get_feedback(guess, possible_target)
+                    feedback = self.get_feedback(word, possible_target)
                     pattern_counts[feedback] += 1
 
                 entropy = 0
@@ -243,17 +214,20 @@ class WordleSolver:
 
                 if entropy > best_entropy:
                     best_entropy = entropy
-                    best_guess = guess
+                    best_guess = word
 
             print(f"    Selected '{best_guess}' based on entropy ({best_entropy:.3f})")
             return best_guess
         else:
-            print(f"    Best word: '{top_words[0]}' with score {max_score:.3f}")
-            return top_words[0]
+            word, freq_score, likelihood_score = target_words[0]
+            score_type = "lowest" if (len(self.guesses) == 0 and start_strategy == "lowest") else "highest"
+            print(f"    Best word: '{word}' with {score_type} frequency score {freq_score} (likelihood {likelihood_score:.3f}) from {search_desc}")
+            return word
 
-    def solve(self, target: str, guess_method: str = "random") -> Tuple[bool, int]:
+    def solve(self, target: str, guess_method: str = "random", start_strategy: str = "crane") -> Tuple[bool, int]:
         """Attempt to solve Wordle for the given target word using specified guess method.
-        guess_method: 'random', 'entropy', 'frequency', or 'likelihood'.
+        guess_method: 'random', 'entropy', or 'frequency'.
+        start_strategy: For frequency method: 'crane', 'random', 'highest', 'lowest'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
         self.guesses = []
@@ -261,15 +235,13 @@ class WordleSolver:
 
         # Select the guessing method
         if guess_method == "random":
-            choose_func = self.choose_guess_random
+            choose_func = lambda: self.choose_guess_random()
         elif guess_method == "entropy":
-            choose_func = self.choose_guess_entropy
+            choose_func = lambda: self.choose_guess_entropy(False)  # Never use optimal start for entropy
         elif guess_method == "frequency":
-            choose_func = self.choose_guess_frequency
-        elif guess_method == "likelihood":
-            choose_func = self.choose_guess_likelihood
+            choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
         else:
-            raise ValueError("Invalid guess_method. Use 'random', 'entropy', 'frequency', or 'likelihood'.")
+            raise ValueError("Invalid guess_method. Use 'random', 'entropy', or 'frequency'.")
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -280,7 +252,10 @@ class WordleSolver:
             self.guesses.append(guess)
             self.feedbacks.append(feedback)
 
-            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Method: {guess_method})")
+            method_desc = f"{guess_method}"
+            if attempt == 0 and start_strategy != "crane":
+                method_desc += f" ({start_strategy} start)"
+            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Method: {method_desc})")
 
             if feedback == 'G' * self.word_length:
                 return True, attempt + 1
@@ -299,23 +274,51 @@ def main():
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
 
-    # Test each guessing method with multiple target words
-    test_words = ["smile", "crane", "house", "grape", "stone"]
-    methods = ["random", "entropy", "frequency", "likelihood"]
+    # Test each guessing method with multiple target words and start strategies
+    test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
+    methods = ["random", "entropy", "frequency"]
+    start_strategies = ["crane", "random", "highest", "lowest"]
 
     for target in test_words:
-        print(f"\n{'='*50}")
+        print(f"\n{'='*80}")
         print(f"Testing target word: {target.upper()}")
-        print(f"{'='*50}")
+        print(f"{'='*80}")
 
         for method in methods:
-            print(f"\nTesting {method} method:")
-            solver = WordleSolver(word_list)
-            solved, attempts = solver.solve(target, guess_method=method)
-            if solved:
-                print(f"✓ Solved in {attempts} guesses!")
-            else:
-                print(f"✗ Failed to solve after {attempts} guesses.")
+            print(f"\n{'-'*60}")
+            print(f"Method: {method.upper()}")
+            print(f"{'-'*60}")
+
+            if method == "random":
+                # Random method only uses crane start
+                print(f"\nTesting {method} method:")
+                solver = WordleSolver(word_list)
+                solved, attempts = solver.solve(target, guess_method=method)
+                if solved:
+                    print(f"✓ Solved in {attempts} guesses!")
+                else:
+                    print(f"✗ Failed to solve after {attempts} guesses.")
+
+            elif method == "entropy":
+                # Entropy method: only test crane start (highest is too slow)
+                print(f"\nTesting {method} method (crane start):")
+                solver = WordleSolver(word_list)
+                solved, attempts = solver.solve(target, guess_method=method, start_strategy="crane")
+                if solved:
+                    print(f"✓ Solved in {attempts} guesses!")
+                else:
+                    print(f"✗ Failed to solve after {attempts} guesses.")
+
+            else:  # frequency method
+                # Frequency method: test all start strategies
+                for strategy in start_strategies:
+                    print(f"\nTesting {method} method ({strategy} start):")
+                    solver = WordleSolver(word_list)
+                    solved, attempts = solver.solve(target, guess_method=method, start_strategy=strategy)
+                    if solved:
+                        print(f"✓ Solved in {attempts} guesses!")
+                    else:
+                        print(f"✗ Failed to solve after {attempts} guesses.")
 
 if __name__ == "__main__":
     main()
