@@ -37,35 +37,29 @@ class WordleSolver:
 
     def is_valid_word(self, word: str, guess: str, feedback: str) -> bool:
         """Check if a word is consistent with the guess and its feedback."""
-        # Check green letters (correct position)
+        # Track required letters (from green/yellow) and their counts
+        required_letters = Counter()
         for i in range(self.word_length):
-            if feedback[i] == 'G' and word[i] != guess[i]:
+            if feedback[i] in ('G', 'Y'):
+                required_letters[guess[i]] += 1
+
+        # Count letters in the candidate word
+        word_letters = Counter(word)
+
+        # Ensure all required letters appear with at least the required frequency
+        for letter, count in required_letters.items():
+            if word_letters[letter] < count:
                 return False
 
-        # Check yellow letters (correct letter, wrong position)
+        # Check position-specific constraints
         for i in range(self.word_length):
-            if feedback[i] == 'Y':
-                # The letter must be in the word somewhere
-                if guess[i] not in word:
-                    return False
-                # But not in the same position as the guess
-                if word[i] == guess[i]:
-                    return False
-
-        # Check gray letters (letter not in word)
-        for i in range(self.word_length):
-            if feedback[i] == 'X':
-                # The letter should not appear in the word at all
-                # BUT only if it's not marked as yellow or green elsewhere
-                letter = guess[i]
-                # Check if this letter appears as green or yellow elsewhere in this guess
-                appears_elsewhere = False
-                for j in range(self.word_length):
-                    if j != i and guess[j] == letter and feedback[j] in ['G', 'Y']:
-                        appears_elsewhere = True
-                        break
-
-                if not appears_elsewhere and letter in word:
+            if feedback[i] == 'G' and word[i] != guess[i]:
+                return False  # Must match exactly for green
+            if feedback[i] == 'Y' and (guess[i] not in word or word[i] == guess[i]):
+                return False  # Must be in word but not in this position for yellow
+            if feedback[i] == 'X' and guess[i] in word:
+                # For gray, letter can appear only if required by green/yellow elsewhere
+                if word_letters[guess[i]] > required_letters[guess[i]]:
                     return False
 
         return True
