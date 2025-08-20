@@ -64,6 +64,14 @@ class WordleSolver:
 
         return True
 
+    def has_unique_letters(self, word: str) -> bool:
+        """Check if a word has all unique letters (no repeating letters)."""
+        return len(set(word)) == len(word)
+
+    def filter_words_unique_letters(self, word_list: List[str]) -> List[str]:
+        """Filter word list to only include words with unique letters."""
+        return [word for word in word_list if self.has_unique_letters(word)]
+
     def filter_words(self, guess: str, feedback: str) -> None:
         """Filter possible words based on guess and feedback."""
         old_count = len(self.possible_words)
@@ -98,6 +106,14 @@ class WordleSolver:
 
         # Calculate entropy for all words and find the best ones
         search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
+
+        # For first guess, filter to unique letters only to speed up calculation and get better starting words
+        if len(self.guesses) == 0:
+            unique_search_space = self.filter_words_unique_letters(search_space)
+            if unique_search_space:  # Only use if we have unique-letter words available
+                search_space = unique_search_space
+                print(f"    Filtered to {len(search_space)} words with unique letters for first guess")
+
         word_entropies = []
 
         for guess in search_space:
@@ -123,11 +139,15 @@ class WordleSolver:
         # Handle ties and print results
         if len(top_words) > 1:
             search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            if len(self.guesses) == 0 and unique_search_space:
+                search_desc += " (unique letters only)"
             print(f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f} from {search_desc}: {top_words}")
             # For entropy ties, just pick the first one (they're all equally good)
             return top_words[0]
         else:
             search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            if len(self.guesses) == 0 and unique_search_space:
+                search_desc += " (unique letters only)"
             print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f} from {search_desc}")
             return top_words[0]
 
@@ -146,16 +166,24 @@ class WordleSolver:
                 print(f"    Random first guess: '{chosen}'")
                 return chosen
             elif start_strategy == "highest":
-                print("    Computing highest frequency-based first guess from full word list...")
+                print("    Computing highest frequency-based first guess from full word list (unique letters only)...")
                 use_optimal_start = True  # Force optimal computation
             elif start_strategy == "lowest":
-                print("    Computing lowest frequency-based first guess from full word list...")
+                print("    Computing lowest frequency-based first guess from full word list (unique letters only)...")
                 use_optimal_start = True  # Force optimal computation
             else:
                 return "crane"  # Default fallback
 
         # Calculate letter frequencies for each position (equivalent to likelihood matrix)
         search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
+
+        # For first guess, filter to unique letters only to prevent repeated letters like "sanes"
+        if len(self.guesses) == 0 and use_optimal_start:
+            unique_search_space = self.filter_words_unique_letters(search_space)
+            if unique_search_space:  # Only use if we have unique-letter words available
+                search_space = unique_search_space
+                print(f"    Filtered to {len(search_space)} words with unique letters for first guess")
+
         total_words = len(self.possible_words)
         freq = [Counter() for _ in range(self.word_length)]
 
@@ -176,13 +204,15 @@ class WordleSolver:
             target_score = min(freq_score for _, freq_score, _ in word_scores)
             target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
                            if freq_score == target_score]
-            search_desc = "full word list (lowest frequency)"
+            search_desc = "full word list (lowest frequency, unique letters only)"
         else:
             # Find the maximum frequency score (normal case)
             target_score = max(freq_score for _, freq_score, _ in word_scores)
             target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
                            if freq_score == target_score]
             search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            if len(self.guesses) == 0 and use_optimal_start and unique_search_space:
+                search_desc += " (unique letters only)"
 
         # Handle ties and print results
         if len(target_words) > 1:
