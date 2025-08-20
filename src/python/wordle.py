@@ -2,10 +2,10 @@ import random
 import math
 from collections import Counter
 from typing import List, Tuple
-from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms
+from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file
 
 class WordleSolver:
-    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20):
+    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None):
         """Initialize the solver (like a constructor in C++)."""
         self.word_list = word_list  # List of possible words (like a Fortran array)
         self.word_length = word_length  # Length of words (default 5 for Wordle)
@@ -13,10 +13,25 @@ class WordleSolver:
         self.possible_words = word_list.copy()  # Working copy of word list
         self.guesses = []  # Store guesses made
         self.feedbacks = []  # Store feedback for each guess
+        self.word_file_path = word_file_path  # Path to word file for saving when words are removed
 
     def filter_words_unique_letters(self, word_list: List[str]) -> List[str]:
         """Filter word list to only include words with unique letters."""
         return filter_words_unique_letters(word_list)
+
+    def remove_rejected_word(self, rejected_word: str) -> None:
+        """Remove a rejected word from both the main word list and possible words."""
+        print(f"    Removing '{rejected_word}' from word lists (rejected by Wordle)")
+        self.word_list = remove_word_from_list(self.word_list, rejected_word)
+        self.possible_words = remove_word_from_list(self.possible_words, rejected_word)
+        print(f"    Word lists updated: {len(self.word_list)} total words, {len(self.possible_words)} possible words")
+
+        # Save updated word list to file if we have a file path
+        if self.word_file_path:
+            if save_words_to_file(self.word_file_path, self.word_list):
+                print(f"    Updated word list saved to {self.word_file_path}")
+            else:
+                print(f"    Warning: Could not save updated word list to {self.word_file_path}")
 
     def filter_words(self, guess: str, feedback: str) -> None:
         """Filter possible words based on guess and feedback."""
@@ -249,10 +264,12 @@ def interactive_mode():
     print("="*60)
 
     # Load word list
-    word_list = load_words("/home/jlighthall/examp/common/words_alpha5.txt")
+    word_file_path = "/home/jlighthall/examp/common/words_alpha5.txt"
+    word_list = load_words(word_file_path)
     if not word_list:
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
+        word_file_path = None  # Don't save fallback list
     else:
         print(f"Loaded {len(word_list)} words from file")
 
@@ -309,9 +326,9 @@ def interactive_mode():
 
     # Initialize solver
     if guess_method == "frequency":
-        solver = WordleSolver(word_list)
+        solver = WordleSolver(word_list, word_file_path=word_file_path)
     else:
-        solver = WordleSolver(word_list)
+        solver = WordleSolver(word_list, word_file_path=word_file_path)
         start_strategy = "crane"  # Default for non-frequency methods
 
     print(f"\n🤖 Using {guess_method} method" + (f" with {start_strategy} start" if guess_method == "frequency" and start_strategy != "crane" else ""))
@@ -377,7 +394,9 @@ def interactive_mode():
         print(f"\n🎮 MANUAL WORDLE MODE")
         print("You'll play on the real Wordle website and input the feedback here.")
         print("Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)")
-        print("Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray\n")
+        print("Special: R=Rejected (if Wordle doesn't accept the word)")
+        print("Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray")
+        print("If Wordle rejects a word, just type 'R' and we'll remove it and suggest another word.\n")
 
         attempt = 0
         max_attempts = 6  # Standard Wordle limit
@@ -408,14 +427,26 @@ def interactive_mode():
 
             # Get feedback from user
             while True:
-                feedback_input = input(f"Enter Wordle feedback for '{user_guess.upper()}' (5 chars: G/Y/X or g/y/x): ").strip().upper()
-                if len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
+                feedback_input = input(f"Enter Wordle feedback for '{user_guess.upper()}' (5 chars: G/Y/X or g/y/x, or 'R' if rejected): ").strip().upper()
+
+                # Check if word was rejected by Wordle
+                if feedback_input == 'R':
+                    print(f"   '{user_guess.upper()}' was rejected by Wordle - removing from word list")
+                    solver.remove_rejected_word(user_guess)
+                    print("   Generating new suggestion...")
+                    break  # Exit feedback loop to get new suggestion
+
+                # Check for valid feedback
+                elif len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
                     feedback = feedback_input
+                    print(f"   Result: {user_guess.upper()} -> {feedback}")
                     break
                 else:
-                    print("Please enter exactly 5 characters using G/Y/X (uppercase or lowercase).")
+                    print("Please enter exactly 5 characters using G/Y/X (uppercase or lowercase), or 'R' if rejected.")
 
-            print(f"   Result: {user_guess.upper()} -> {feedback}")
+            # If word was rejected, continue to get new suggestion
+            if feedback_input == 'R':
+                continue  # Go back to get new suggestion
 
             # Check if solved
             if feedback == "GGGGG":

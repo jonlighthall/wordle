@@ -165,3 +165,21 @@ def should_prefer_isograms(possible_words: List[str], total_guesses: int = 0) ->
     # Prefer isograms if they make up more than 30% of remaining possibilities
     # or if we're early in the game (first 2 guesses)
     return isogram_ratio > 0.3 or total_guesses < 2
+
+
+def remove_word_from_list(word_list: List[str], word_to_remove: str) -> List[str]:
+    """Remove a word from the word list (case-insensitive)."""
+    word_to_remove = word_to_remove.lower()
+    return [word for word in word_list if word.lower() != word_to_remove]
+
+
+def save_words_to_file(filename: str, words: List[str]) -> bool:
+    """Save words to a file, one per line."""
+    try:
+        with open(filename, 'w') as f:
+            for word in words:
+                f.write(word + '\n')
+        return True
+    except Exception as e:
+        print(f"Error saving words to {filename}: {e}")
+        return False
