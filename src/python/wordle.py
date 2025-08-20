@@ -2,7 +2,7 @@ import random
 import math
 from collections import Counter
 from typing import List, Tuple
-from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate
+from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms
 
 class WordleSolver:
     def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20):
@@ -33,6 +33,14 @@ class WordleSolver:
         if not self.possible_words:
             print("    No possible words left, using random from full list")
             return random.choice(self.word_list)
+
+        # Prefer isograms when it makes sense
+        if should_prefer_isograms(self.possible_words, len(self.guesses)):
+            isogram_candidates = [word for word in self.possible_words if has_unique_letters(word)]
+            if isogram_candidates:
+                print(f"    Preferring isograms: choosing from {len(isogram_candidates)} words with unique letters")
+                return random.choice(isogram_candidates)
+
         if len(self.guesses) == 0:
             return "crane"  # Common first guess in Wordle (hardcoded for simplicity)
         return random.choice(self.possible_words)
@@ -53,12 +61,12 @@ class WordleSolver:
         # Calculate entropy for all words and find the best ones
         search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
 
-        # For first guess, filter to unique letters only to speed up calculation and get better starting words
-        if len(self.guesses) == 0:
+        # Prefer isograms when it makes sense (early in game or when many possibilities are isograms)
+        if should_prefer_isograms(self.possible_words, len(self.guesses)):
             unique_search_space = self.filter_words_unique_letters(search_space)
             if unique_search_space:  # Only use if we have unique-letter words available
                 search_space = unique_search_space
-                print(f"    Filtered to {len(search_space)} words with unique letters for first guess")
+                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
 
         word_entropies = []
 
@@ -123,12 +131,12 @@ class WordleSolver:
         # Calculate letter frequencies for each position (equivalent to likelihood matrix)
         search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
 
-        # For first guess, filter to unique letters only to prevent repeated letters like "sanes"
-        if len(self.guesses) == 0 and use_optimal_start:
+        # Prefer isograms when it makes sense (early in game or when many possibilities are isograms)
+        if should_prefer_isograms(self.possible_words, len(self.guesses)):
             unique_search_space = self.filter_words_unique_letters(search_space)
             if unique_search_space:  # Only use if we have unique-letter words available
                 search_space = unique_search_space
-                print(f"    Filtered to {len(search_space)} words with unique letters for first guess")
+                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
 
         total_words = len(self.possible_words)
         freq = [Counter() for _ in range(self.word_length)]
@@ -400,12 +408,12 @@ def interactive_mode():
 
             # Get feedback from user
             while True:
-                feedback_input = input(f"Enter Wordle feedback for '{user_guess.upper()}' (5 chars: G/Y/X): ").strip().upper()
+                feedback_input = input(f"Enter Wordle feedback for '{user_guess.upper()}' (5 chars: G/Y/X or g/y/x): ").strip().upper()
                 if len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
                     feedback = feedback_input
                     break
                 else:
-                    print("Please enter exactly 5 characters using only G, Y, or X.")
+                    print("Please enter exactly 5 characters using G/Y/X (uppercase or lowercase).")
 
             print(f"   Result: {user_guess.upper()} -> {feedback}")
 

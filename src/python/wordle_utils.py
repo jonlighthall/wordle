@@ -60,16 +60,16 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
     Uses Counter-based logic to handle duplicate letters correctly."""
     if len(word) != len(guess) or len(feedback) != len(guess):
         return False
-    
+
     guess_counter = Counter(guess)
     word_counter = Counter(word)
-    
+
     # Count how many of each letter should be in the target word
     required_letters = Counter()
     forbidden_letters = set()
     position_requirements = {}  # position -> required letter
     position_forbidden = {}     # position -> set of forbidden letters
-    
+
     for i, (g_char, f_char) in enumerate(zip(guess, feedback)):
         if f_char == 'G':  # Green: correct letter, correct position
             required_letters[g_char] += 1
@@ -84,22 +84,22 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
             # 1. Letter is not in the word at all
             # 2. Letter is in the word, but we already found all instances via G/Y
             pass
-    
+
     # Check position requirements (Green letters)
     for pos, required_char in position_requirements.items():
         if word[pos] != required_char:
             return False
-    
+
     # Check position forbidden (Yellow letters can't be in their guessed position)
     for pos, forbidden_chars in position_forbidden.items():
         if word[pos] in forbidden_chars:
             return False
-    
+
     # Check that word contains at least the required letters
     for letter, min_count in required_letters.items():
         if word_counter[letter] < min_count:
             return False
-    
+
     # Handle gray letters - they indicate no additional instances beyond what we found
     for i, (g_char, f_char) in enumerate(zip(guess, feedback)):
         if f_char == 'X':  # Gray
@@ -108,7 +108,7 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
             actual_count = word_counter.get(g_char, 0)
             if actual_count != expected_count:
                 return False
-    
+
     return True
 
 
@@ -125,17 +125,17 @@ def load_words(filename: str = "words_alpha5.txt") -> List[str]:
 def is_wordle_appropriate(word: str) -> bool:
     """Check if a word is appropriate for Wordle (base form, common words)."""
     word = word.lower()
-    
+
     # Simple filtering - just exclude plurals and past tense verbs
-    
+
     # Filter out plurals (words ending in 's')
     if word.endswith('s'):
         return False
-    
+
     # Filter out past tense verbs (words ending in 'ed')
     if word.endswith('ed'):
         return False
-    
+
     return True
 
 
@@ -147,3 +147,21 @@ def filter_words_unique_letters(words: List[str]) -> List[str]:
 def filter_wordle_appropriate(words: List[str]) -> List[str]:
     """Filter words to only include Wordle-appropriate words."""
     return [word for word in words if is_wordle_appropriate(word)]
+
+
+def should_prefer_isograms(possible_words: List[str], total_guesses: int = 0) -> bool:
+    """Determine if we should prefer isograms based on remaining possibilities and guess count."""
+    if total_guesses >= 3:  # After 3 guesses, be more flexible
+        return False
+
+    if len(possible_words) == 0:
+        return True  # Default to isograms when no constraints
+
+    # Count how many remaining words are isograms
+    isogram_count = sum(1 for word in possible_words if has_unique_letters(word))
+    total_count = len(possible_words)
+    isogram_ratio = isogram_count / total_count if total_count > 0 else 0
+
+    # Prefer isograms if they make up more than 30% of remaining possibilities
+    # or if we're early in the game (first 2 guesses)
+    return isogram_ratio > 0.3 or total_guesses < 2
