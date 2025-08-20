@@ -288,7 +288,232 @@ class WordleSolver:
 
         return False, self.max_guesses
 
+def interactive_mode():
+    """Interactive mode for playing Wordle with AI assistance."""
+    print("\n" + "="*60)
+    print("🎯 INTERACTIVE WORDLE SOLVER")
+    print("="*60)
+    
+    # Load word list
+    try:
+        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
+            word_list = [word.strip() for word in f.readlines()]
+        print(f"Loaded {len(word_list)} words from file")
+    except FileNotFoundError:
+        print("Word file not found, using fallback list")
+        word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
+    
+    # Choose solving method
+    print("\nChoose your AI assistant method:")
+    print("1. Random guesses")
+    print("2. Entropy-based (information theory)")
+    print("3. Frequency-based (letter frequency)")
+    
+    while True:
+        try:
+            method_choice = input("\nEnter choice (1-3): ").strip()
+            if method_choice == "1":
+                guess_method = "random"
+                break
+            elif method_choice == "2":
+                guess_method = "entropy"
+                break
+            elif method_choice == "3":
+                guess_method = "frequency"
+                # Choose start strategy for frequency method
+                print("\nChoose starting strategy:")
+                print("1. crane (classic)")
+                print("2. random")
+                print("3. highest frequency")
+                print("4. lowest frequency")
+                
+                while True:
+                    try:
+                        start_choice = input("Enter choice (1-4): ").strip()
+                        if start_choice == "1":
+                            start_strategy = "crane"
+                            break
+                        elif start_choice == "2":
+                            start_strategy = "random"
+                            break
+                        elif start_choice == "3":
+                            start_strategy = "highest"
+                            break
+                        elif start_choice == "4":
+                            start_strategy = "lowest"
+                            break
+                        else:
+                            print("Invalid choice. Please enter 1-4.")
+                    except KeyboardInterrupt:
+                        print("\nGoodbye!")
+                        return
+                break
+            else:
+                print("Invalid choice. Please enter 1-3.")
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            return
+    
+    # Initialize solver
+    if guess_method == "frequency":
+        solver = WordleSolver(word_list)
+    else:
+        solver = WordleSolver(word_list)
+        start_strategy = "crane"  # Default for non-frequency methods
+    
+    print(f"\n🤖 Using {guess_method} method" + (f" with {start_strategy} start" if guess_method == "frequency" and start_strategy != "crane" else ""))
+    
+    # Choose target word mode
+    print("\nHow do you want to set the target word?")
+    print("1. I'll tell you the target word")
+    print("2. Pick a random word for me")
+    print("3. I want to play against a real Wordle (I'll input feedback manually)")
+    
+    while True:
+        try:
+            target_choice = input("\nEnter choice (1-3): ").strip()
+            if target_choice in ["1", "2", "3"]:
+                break
+            else:
+                print("Invalid choice. Please enter 1-3.")
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            return
+    
+    if target_choice == "1":
+        # User provides target word
+        while True:
+            target = input("\nEnter the target word (5 letters): ").strip().lower()
+            if len(target) == 5 and target.isalpha():
+                if target in word_list:
+                    break
+                else:
+                    print(f"'{target}' is not in the word list. Continue anyway? (y/n)")
+                    if input().strip().lower().startswith('y'):
+                        break
+            else:
+                print("Please enter exactly 5 letters.")
+        
+        # Automated solving mode
+        print(f"\n🎯 Target word: {target.upper()}")
+        print("🤖 AI will solve this automatically...\n")
+        
+        solved, attempts = solver.solve(target, guess_method=guess_method, start_strategy=start_strategy)
+        
+        if solved:
+            print(f"\n🎉 Solved in {attempts} guesses!")
+        else:
+            print(f"\n😞 Failed to solve after {attempts} guesses.")
+            
+    elif target_choice == "2":
+        # Random target word
+        target = random.choice(word_list)
+        print(f"\n🎯 Random target word selected!")
+        print("🤖 AI will solve this automatically...\n")
+        
+        solved, attempts = solver.solve(target, guess_method=guess_method, start_strategy=start_strategy)
+        
+        print(f"\n🎯 The target word was: {target.upper()}")
+        if solved:
+            print(f"🎉 Solved in {attempts} guesses!")
+        else:
+            print(f"😞 Failed to solve after {attempts} guesses.")
+            
+    else:
+        # Manual feedback mode (real Wordle)
+        print(f"\n🎮 MANUAL WORDLE MODE")
+        print("You'll play on the real Wordle website and input the feedback here.")
+        print("Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)")
+        print("Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray\n")
+        
+        attempt = 0
+        max_attempts = 6  # Standard Wordle limit
+        
+        while attempt < max_attempts:
+            attempt += 1
+            
+            # Get AI suggestion
+            if guess_method == "random":
+                suggestion = solver.choose_guess_random()
+            elif guess_method == "entropy":
+                suggestion = solver.choose_guess_entropy(False)
+            else:  # frequency
+                suggestion = solver.choose_guess_frequency(start_strategy=start_strategy)
+            
+            print(f"🤖 Guess {attempt}: I suggest '{suggestion.upper()}'")
+            
+            # Get user's actual guess
+            while True:
+                user_guess = input(f"What word did you actually guess? (or press Enter for '{suggestion}'): ").strip().lower()
+                if not user_guess:
+                    user_guess = suggestion
+                    break
+                elif len(user_guess) == 5 and user_guess.isalpha():
+                    break
+                else:
+                    print("Please enter exactly 5 letters.")
+            
+            # Get feedback from user
+            while True:
+                feedback_input = input(f"Enter Wordle feedback for '{user_guess.upper()}' (5 chars: G/Y/X): ").strip().upper()
+                if len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
+                    feedback = feedback_input
+                    break
+                else:
+                    print("Please enter exactly 5 characters using only G, Y, or X.")
+            
+            print(f"   Result: {user_guess.upper()} -> {feedback}")
+            
+            # Check if solved
+            if feedback == "GGGGG":
+                print(f"\n🎉 Congratulations! You solved it in {attempt} guesses!")
+                print(f"🎯 The word was: {user_guess.upper()}")
+                break
+            
+            # Update solver with the guess and feedback
+            solver.guesses.append(user_guess)
+            solver.feedbacks.append(feedback)
+            solver.filter_words(user_guess, feedback)
+            
+            if not solver.possible_words:
+                print("⚠️  No possible words left! There might be an error in the feedback.")
+                break
+                
+        else:
+            print(f"\n😞 Game over! You used all {max_attempts} guesses.")
+    
+    # Ask if user wants to play again
+    print(f"\nWould you like to play again? (y/n): ", end="")
+    try:
+        if input().strip().lower().startswith('y'):
+            interactive_mode()
+    except KeyboardInterrupt:
+        pass
+    
+    print("Thanks for playing! 🎯")
+
 def main():
+    """Main function - choose between interactive mode and automated testing."""
+    print("🎯 WORDLE SOLVER")
+    print("================")
+    print("1. Interactive mode (play with AI assistance)")
+    print("2. Automated testing (run test suite)")
+    
+    while True:
+        try:
+            choice = input("\nEnter your choice (1 or 2): ").strip()
+            if choice == "1":
+                interactive_mode()
+                return
+            elif choice == "2":
+                break  # Continue to automated testing below
+            else:
+                print("Please enter 1 or 2.")
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            return
+    
+    # Original automated testing code
     # Load word list from file
     try:
         with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
