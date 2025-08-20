@@ -2,6 +2,7 @@ import random
 import math
 from collections import Counter
 from typing import List, Tuple
+from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate
 
 class WordleSolver:
     def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20):
@@ -13,71 +14,16 @@ class WordleSolver:
         self.guesses = []  # Store guesses made
         self.feedbacks = []  # Store feedback for each guess
 
-    def get_feedback(self, guess: str, target: str) -> str:
-        """Generate feedback for a guess against the target word.
-        Returns a string of 'G' (green), 'Y' (yellow), 'X' (gray)."""
-        feedback = ['X'] * self.word_length
-        target_chars = list(target)
-
-        # First pass: Mark green (correct letter, correct position)
-        for i in range(self.word_length):
-            if guess[i] == target[i]:
-                feedback[i] = 'G'
-                target_chars[i] = None  # Remove matched letter
-
-        # Second pass: Mark yellow (correct letter, wrong position)
-        for i in range(self.word_length):
-            if feedback[i] == 'G':
-                continue
-            if guess[i] in target_chars:
-                feedback[i] = 'Y'
-                target_chars[target_chars.index(guess[i])] = None
-
-        return ''.join(feedback)
-
-    def is_valid_word(self, word: str, guess: str, feedback: str) -> bool:
-        """Check if a word is consistent with the guess and its feedback."""
-        # Track required letters (from green/yellow) and their counts
-        required_letters = Counter()
-        for i in range(self.word_length):
-            if feedback[i] in ('G', 'Y'):
-                required_letters[guess[i]] += 1
-
-        # Count letters in the candidate word
-        word_letters = Counter(word)
-
-        # Ensure all required letters appear with at least the required frequency
-        for letter, count in required_letters.items():
-            if word_letters[letter] < count:
-                return False
-
-        # Check position-specific constraints
-        for i in range(self.word_length):
-            if feedback[i] == 'G' and word[i] != guess[i]:
-                return False  # Must match exactly for green
-            if feedback[i] == 'Y' and (guess[i] not in word or word[i] == guess[i]):
-                return False  # Must be in word but not in this position for yellow
-            if feedback[i] == 'X' and guess[i] in word:
-                # For gray, letter can appear only if required by green/yellow elsewhere
-                if word_letters[guess[i]] > required_letters[guess[i]]:
-                    return False
-
-        return True
-
-    def has_unique_letters(self, word: str) -> bool:
-        """Check if a word has all unique letters (no repeating letters)."""
-        return len(set(word)) == len(word)
-
     def filter_words_unique_letters(self, word_list: List[str]) -> List[str]:
         """Filter word list to only include words with unique letters."""
-        return [word for word in word_list if self.has_unique_letters(word)]
+        return filter_words_unique_letters(word_list)
 
     def filter_words(self, guess: str, feedback: str) -> None:
         """Filter possible words based on guess and feedback."""
         old_count = len(self.possible_words)
         self.possible_words = [
             word for word in self.possible_words
-            if self.is_valid_word(word, guess, feedback)
+            if is_valid_word(word, guess, feedback)
         ]
         new_count = len(self.possible_words)
         print(f"    Filtered from {old_count} to {new_count} possible words")
@@ -119,7 +65,7 @@ class WordleSolver:
         for guess in search_space:
             pattern_counts = Counter()
             for possible_target in self.possible_words:
-                feedback = self.get_feedback(guess, possible_target)
+                feedback = get_feedback(guess, possible_target)
                 pattern_counts[feedback] += 1
 
             total_words = len(self.possible_words)
@@ -228,7 +174,7 @@ class WordleSolver:
             for word, _, _ in target_words:
                 pattern_counts = Counter()
                 for possible_target in self.possible_words:
-                    feedback = self.get_feedback(word, possible_target)
+                    feedback = get_feedback(word, possible_target)
                     pattern_counts[feedback] += 1
 
                 entropy = 0
@@ -272,7 +218,7 @@ class WordleSolver:
             if not guess:
                 return False, attempt
 
-            feedback = self.get_feedback(guess, target)
+            feedback = get_feedback(guess, target)
             self.guesses.append(guess)
             self.feedbacks.append(feedback)
 
@@ -295,13 +241,12 @@ def interactive_mode():
     print("="*60)
 
     # Load word list
-    try:
-        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
-            word_list = [word.strip() for word in f.readlines()]
-        print(f"Loaded {len(word_list)} words from file")
-    except FileNotFoundError:
+    word_list = load_words("/home/jlighthall/examp/common/words_alpha5.txt")
+    if not word_list:
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
+    else:
+        print(f"Loaded {len(word_list)} words from file")
 
     # Choose solving method
     print("\nChoose your AI assistant method:")
@@ -515,13 +460,12 @@ def main():
 
     # Original automated testing code
     # Load word list from file
-    try:
-        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
-            word_list = [word.strip() for word in f.readlines()]
-        print(f"Loaded {len(word_list)} words from file")
-    except FileNotFoundError:
+    word_list = load_words("/home/jlighthall/examp/common/words_alpha5.txt")
+    if not word_list:
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
+    else:
+        print(f"Loaded {len(word_list)} words from file")
 
     # Test each guessing method with multiple target words and start strategies
     test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output

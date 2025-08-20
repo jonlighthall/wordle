@@ -7,73 +7,8 @@ This calculates the letter frequency for each position and scores words accordin
 import math
 from collections import Counter
 from typing import List, Tuple
+from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, load_words, filter_words_unique_letters, filter_wordle_appropriate
 
-def get_feedback(guess: str, target: str) -> str:
-    """Generate feedback for a guess against the target word.
-    Returns a string of 'G' (green), 'Y' (yellow), 'X' (gray)."""
-    word_length = len(guess)
-    feedback = ['X'] * word_length
-    target_chars = list(target)
-
-    # First pass: Mark green (correct letter, correct position)
-    for i in range(word_length):
-        if guess[i] == target[i]:
-            feedback[i] = 'G'
-            target_chars[i] = None  # Remove matched letter
-
-    # Second pass: Mark yellow (correct letter, wrong position)
-    for i in range(word_length):
-        if feedback[i] == 'G':
-            continue
-        if guess[i] in target_chars:
-            feedback[i] = 'Y'
-            target_chars[target_chars.index(guess[i])] = None
-
-    return ''.join(feedback)
-
-def calculate_entropy(guess: str, possible_words: List[str]) -> float:
-    """Calculate the entropy for a given guess against all possible target words."""
-    pattern_counts = Counter()
-
-    for possible_target in possible_words:
-        feedback = get_feedback(guess, possible_target)
-        pattern_counts[feedback] += 1
-
-    total_words = len(possible_words)
-    entropy = 0
-    for count in pattern_counts.values():
-        probability = count / total_words
-        entropy -= probability * math.log2(probability) if probability > 0 else 0
-
-    return entropy
-
-def has_unique_letters(word: str) -> bool:
-    """Check if a word has all unique letters (no repeating letters) - i.e., is an isogram."""
-    return len(set(word)) == len(word)
-
-def filter_words_unique_letters(word_list: List[str]) -> List[str]:
-    """Filter word list to only include words with unique letters (isograms)."""
-    return [word for word in word_list if has_unique_letters(word)]
-
-def is_wordle_appropriate(word: str) -> bool:
-    """Check if a word is appropriate for Wordle (base form, common words)."""
-    word = word.lower()
-
-    # Simple filtering - just exclude plurals and past tense verbs
-
-    # Filter out plurals (words ending in 's')
-    if word.endswith('s'):
-        return False
-
-    # Filter out past tense verbs (words ending in 'ed')
-    if word.endswith('ed'):
-        return False
-
-    return True
-
-def filter_words_wordle_appropriate(word_list: List[str]) -> List[str]:
-    """Filter word list to only include words appropriate for Wordle."""
-    return [word for word in word_list if is_wordle_appropriate(word)]
 
 def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, float]:
     """Calculate frequency score for a word based on letter frequencies in each position."""
@@ -100,7 +35,7 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
 
     # Filter to Wordle-appropriate words (no plurals, past tense, etc.) if requested
     if wordle_appropriate_only:
-        word_list = filter_words_wordle_appropriate(word_list)
+        word_list = filter_wordle_appropriate(word_list)
         filtered_count = len(word_list)
         print(f"Filtered to {filtered_count} Wordle-appropriate words from {original_count} total words")
         original_count = filtered_count
@@ -159,13 +94,11 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
 
 def main():
     # Load word list from file
-    try:
-        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
-            word_list = [word.strip() for word in f.readlines()]
-        print(f"Loaded {len(word_list)} words from file")
-    except FileNotFoundError:
+    word_list = load_words("/home/jlighthall/examp/common/words_alpha5.txt")
+    if not word_list:
         print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5.txt")
         return
+    print(f"Loaded {len(word_list)} words from file")
 
     # Find highest frequency words (Wordle-appropriate, unique letters only)
     print(f"\n{'='*80}")
