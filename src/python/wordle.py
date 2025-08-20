@@ -145,9 +145,74 @@ class WordleSolver:
 
         return best_guess
 
+    def choose_guess_likelihood(self) -> str:
+        """Choose a guess based on letter likelihood in each position with tie-breaking."""
+        if not self.possible_words:
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
+        if len(self.guesses) == 0:
+            return "crane"  # Hardcoded first guess
+
+        # Step 1: Calculate likelihood matrix (5x26 array of probabilities)
+        total_words = len(self.possible_words)
+        likelihood_matrix = []
+
+        for pos in range(self.word_length):
+            letter_counts = Counter()
+            for word in self.possible_words:
+                letter_counts[word[pos]] += 1
+
+            # Convert counts to likelihoods (probabilities)
+            position_likelihoods = {}
+            for letter in 'abcdefghijklmnopqrstuvwxyz':
+                position_likelihoods[letter] = letter_counts.get(letter, 0) / total_words
+
+            likelihood_matrix.append(position_likelihoods)
+
+        # Step 2: Score each word based on cumulative likelihood
+        word_scores = {}
+        for word in self.possible_words:
+            score = 0
+            for i, char in enumerate(word):
+                score += likelihood_matrix[i][char]
+            word_scores[word] = score
+
+        # Step 3: Find words with the highest score
+        max_score = max(word_scores.values())
+        top_words = [word for word, score in word_scores.items() if score == max_score]
+
+        # Step 4: Handle ties
+        if len(top_words) > 1:
+            print(f"    Tie between {len(top_words)} words with score {max_score:.3f}: {top_words}")
+
+            # Use entropy to break ties
+            best_guess = None
+            best_entropy = -1
+
+            for guess in top_words:
+                pattern_counts = Counter()
+                for possible_target in self.possible_words:
+                    feedback = self.get_feedback(guess, possible_target)
+                    pattern_counts[feedback] += 1
+
+                entropy = 0
+                for count in pattern_counts.values():
+                    probability = count / total_words
+                    entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+                if entropy > best_entropy:
+                    best_entropy = entropy
+                    best_guess = guess
+
+            print(f"    Selected '{best_guess}' based on entropy ({best_entropy:.3f})")
+            return best_guess
+        else:
+            print(f"    Best word: '{top_words[0]}' with score {max_score:.3f}")
+            return top_words[0]
+
     def solve(self, target: str, guess_method: str = "random") -> Tuple[bool, int]:
         """Attempt to solve Wordle for the given target word using specified guess method.
-        guess_method: 'random', 'entropy', or 'frequency'.
+        guess_method: 'random', 'entropy', 'frequency', or 'likelihood'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
         self.guesses = []
@@ -160,8 +225,10 @@ class WordleSolver:
             choose_func = self.choose_guess_entropy
         elif guess_method == "frequency":
             choose_func = self.choose_guess_frequency
+        elif guess_method == "likelihood":
+            choose_func = self.choose_guess_likelihood
         else:
-            raise ValueError("Invalid guess_method. Use 'random', 'entropy', or 'frequency'.")
+            raise ValueError("Invalid guess_method. Use 'random', 'entropy', 'frequency', or 'likelihood'.")
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -193,7 +260,7 @@ def main():
 
     # Test each guessing method with multiple target words
     test_words = ["smile", "crane", "house", "grape", "stone"]
-    methods = ["random", "entropy", "frequency"]
+    methods = ["random", "entropy", "frequency", "likelihood"]
 
     for target in test_words:
         print(f"\n{'='*50}")
