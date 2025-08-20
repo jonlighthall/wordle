@@ -47,6 +47,14 @@ def calculate_entropy(guess: str, possible_words: List[str]) -> float:
 
     return entropy
 
+def has_unique_letters(word: str) -> bool:
+    """Check if a word has all unique letters (no repeating letters) - i.e., is an isogram."""
+    return len(set(word)) == len(word)
+
+def filter_words_unique_letters(word_list: List[str]) -> List[str]:
+    """Filter word list to only include words with unique letters (isograms)."""
+    return [word for word in word_list if has_unique_letters(word)]
+
 def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, float]:
     """Calculate frequency score for a word based on letter frequencies in each position."""
     word_length = len(word)
@@ -65,21 +73,29 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
 
     return freq_score, likelihood_score
 
-def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False) -> List[Tuple[str, int, float, float]]:
+def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False, unique_letters_only: bool = True) -> List[Tuple[str, int, float, float]]:
     """Find the words with the highest (or lowest) frequency scores."""
     analysis_type = "lowest" if find_lowest else "highest"
+    
+    # Filter to isograms (words with unique letters only) if requested
+    if unique_letters_only:
+        original_count = len(word_list)
+        word_list = filter_words_unique_letters(word_list)
+        filtered_count = len(word_list)
+        print(f"Filtered to {filtered_count} words with unique letters (isograms) from {original_count} total words")
+    
     print(f"Calculating {analysis_type} frequency scores for {len(word_list)} words...")
-
+    
     # OPTIMIZED: Calculate frequencies once for the entire word list
     word_length = 5
     freq = [Counter() for _ in range(word_length)]
-
+    
     for word in word_list:
         for i, char in enumerate(word):
             freq[i][char] += 1
-
+    
     print(f"Frequency analysis complete. Now scoring {len(word_list)} words...")
-
+    
     word_scores = []
 
     for i, word in enumerate(word_list):
@@ -121,28 +137,28 @@ def main():
         print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5.txt")
         return
 
-    # Find highest frequency words
+    # Find highest frequency words (unique letters only)
     print(f"\n{'='*80}")
-    print("HIGHEST FREQUENCY ANALYSIS")
+    print("HIGHEST FREQUENCY ANALYSIS (UNIQUE LETTERS ONLY)")
     print(f"{'='*80}")
-
-    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False)
-
+    
+    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False, unique_letters_only=True)
+    
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")
-
+    
     for i, (word, freq_score, likelihood_score, entropy) in enumerate(top_words, 1):
         print(f"{i:<4} {word:<8} {freq_score:<10} {likelihood_score:<12.4f} {entropy:<10.4f}")
-
+    
     print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
-
-    # Find lowest frequency words
+    
+    # Find lowest frequency words (unique letters only)
     print(f"\n{'='*80}")
-    print("LOWEST FREQUENCY ANALYSIS")
+    print("LOWEST FREQUENCY ANALYSIS (UNIQUE LETTERS ONLY)")
     print(f"{'='*80}")
-
-    bottom_words = find_best_frequency_words(word_list, top_n=20, find_lowest=True)
-
+    
+    bottom_words = find_best_frequency_words(word_list, top_n=20, find_lowest=True, unique_letters_only=True)
+    
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")
 
