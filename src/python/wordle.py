@@ -86,8 +86,14 @@ class WordleSolver:
         return False, self.max_guesses
 
 def main():
-    # Sample word list (replace with a file read if you have one)
-    word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
+    # Load word list from file
+    try:
+        with open("/home/jlighthall/examp/common/words_alpha5.txt", "r") as f:
+            word_list = [word.strip() for word in f.readlines()]
+        print(f"Loaded {len(word_list)} words from file")
+    except FileNotFoundError:
+        print("Word file not found, using fallback list")
+        word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
 
     # Create solver instance
     solver = WordleSolver(word_list)
