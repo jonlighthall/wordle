@@ -4,11 +4,11 @@ from collections import Counter
 from typing import List, Tuple
 
 class WordleSolver:
-    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 6):
+    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20):
         """Initialize the solver (like a constructor in C++)."""
         self.word_list = word_list  # List of possible words (like a Fortran array)
         self.word_length = word_length  # Length of words (default 5 for Wordle)
-        self.max_guesses = max_guesses  # Max attempts allowed
+        self.max_guesses = max_guesses  # Max attempts allowed (increased for automated testing)
         self.possible_words = word_list.copy()  # Working copy of word list
         self.guesses = []  # Store guesses made
         self.feedbacks = []  # Store feedback for each guess
@@ -37,26 +37,54 @@ class WordleSolver:
 
     def is_valid_word(self, word: str, guess: str, feedback: str) -> bool:
         """Check if a word is consistent with the guess and its feedback."""
+        # Check green letters (correct position)
         for i in range(self.word_length):
             if feedback[i] == 'G' and word[i] != guess[i]:
                 return False
-            if feedback[i] == 'Y' and (guess[i] not in word or word[i] == guess[i]):
-                return False
-            if feedback[i] == 'X' and guess[i] in word:
-                return False
+
+        # Check yellow letters (correct letter, wrong position)
+        for i in range(self.word_length):
+            if feedback[i] == 'Y':
+                # The letter must be in the word somewhere
+                if guess[i] not in word:
+                    return False
+                # But not in the same position as the guess
+                if word[i] == guess[i]:
+                    return False
+
+        # Check gray letters (letter not in word)
+        for i in range(self.word_length):
+            if feedback[i] == 'X':
+                # The letter should not appear in the word at all
+                # BUT only if it's not marked as yellow or green elsewhere
+                letter = guess[i]
+                # Check if this letter appears as green or yellow elsewhere in this guess
+                appears_elsewhere = False
+                for j in range(self.word_length):
+                    if j != i and guess[j] == letter and feedback[j] in ['G', 'Y']:
+                        appears_elsewhere = True
+                        break
+
+                if not appears_elsewhere and letter in word:
+                    return False
+
         return True
 
     def filter_words(self, guess: str, feedback: str) -> None:
         """Filter possible words based on guess and feedback."""
+        old_count = len(self.possible_words)
         self.possible_words = [
             word for word in self.possible_words
             if self.is_valid_word(word, guess, feedback)
         ]
+        new_count = len(self.possible_words)
+        print(f"    Filtered from {old_count} to {new_count} possible words")
 
     def choose_guess_random(self) -> str:
         """Choose a random guess from possible words."""
         if not self.possible_words:
-            return None
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
         if len(self.guesses) == 0:
             return "crane"  # Common first guess in Wordle (hardcoded for simplicity)
         return random.choice(self.possible_words)
@@ -64,7 +92,8 @@ class WordleSolver:
     def choose_guess_entropy(self) -> str:
         """Choose a guess based on maximum entropy."""
         if not self.possible_words:
-            return None
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
         if len(self.guesses) == 0:
             return "crane"  # Hardcoded first guess for simplicity
 
@@ -92,7 +121,8 @@ class WordleSolver:
     def choose_guess_frequency(self) -> str:
         """Choose a guess based on letter frequency in each position."""
         if not self.possible_words:
-            return None
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
         if len(self.guesses) == 0:
             return "crane"  # Hardcoded first guess
 
@@ -161,18 +191,23 @@ def main():
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
 
-    # Test each guessing method
-    target = "smile"
+    # Test each guessing method with multiple target words
+    test_words = ["smile", "crane", "house", "grape", "stone"]
     methods = ["random", "entropy", "frequency"]
 
-    for method in methods:
-        print(f"\nTesting {method} method:")
-        solver = WordleSolver(word_list)
-        solved, attempts = solver.solve(target, guess_method=method)
-        if solved:
-            print(f"Solved in {attempts} guesses!")
-        else:
-            print(f"Failed to solve after {attempts} guesses.")
+    for target in test_words:
+        print(f"\n{'='*50}")
+        print(f"Testing target word: {target.upper()}")
+        print(f"{'='*50}")
+
+        for method in methods:
+            print(f"\nTesting {method} method:")
+            solver = WordleSolver(word_list)
+            solved, attempts = solver.solve(target, guess_method=method)
+            if solved:
+                print(f"✓ Solved in {attempts} guesses!")
+            else:
+                print(f"✗ Failed to solve after {attempts} guesses.")
 
 if __name__ == "__main__":
     main()
