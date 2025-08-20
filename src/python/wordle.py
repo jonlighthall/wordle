@@ -1,4 +1,5 @@
 import random
+import math
 from collections import Counter
 from typing import List, Tuple
 
@@ -52,23 +53,88 @@ class WordleSolver:
             if self.is_valid_word(word, guess, feedback)
         ]
 
-    def choose_guess(self) -> str:
-        """Choose the next guess (simple heuristic: random from possible words)."""
+    def choose_guess_random(self) -> str:
+        """Choose a random guess from possible words."""
         if not self.possible_words:
             return None
         if len(self.guesses) == 0:
             return "crane"  # Common first guess in Wordle (hardcoded for simplicity)
         return random.choice(self.possible_words)
 
-    def solve(self, target: str) -> Tuple[bool, int]:
-        """Attempt to solve Wordle for the given target word.
+    def choose_guess_entropy(self) -> str:
+        """Choose a guess based on maximum entropy."""
+        if not self.possible_words:
+            return None
+        if len(self.guesses) == 0:
+            return "crane"  # Hardcoded first guess for simplicity
+
+        best_guess = None
+        best_entropy = -1
+
+        for guess in self.possible_words:
+            pattern_counts = Counter()
+            for possible_target in self.possible_words:
+                feedback = self.get_feedback(guess, possible_target)
+                pattern_counts[feedback] += 1
+
+            total_words = len(self.possible_words)
+            entropy = 0
+            for count in pattern_counts.values():
+                probability = count / total_words
+                entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+            if entropy > best_entropy:
+                best_entropy = entropy
+                best_guess = guess
+
+        return best_guess
+
+    def choose_guess_frequency(self) -> str:
+        """Choose a guess based on letter frequency in each position."""
+        if not self.possible_words:
+            return None
+        if len(self.guesses) == 0:
+            return "crane"  # Hardcoded first guess
+
+        # Calculate letter frequencies for each position
+        freq = [Counter() for _ in range(self.word_length)]
+        for word in self.possible_words:
+            for i, char in enumerate(word):
+                freq[i][char] += 1
+
+        # Score each word based on letter frequencies
+        best_guess = None
+        best_score = -1
+        for word in self.possible_words:
+            score = 0
+            for i, char in enumerate(word):
+                score += freq[i][char]  # Sum frequency of each letter in its position
+            if score > best_score:
+                best_score = score
+                best_guess = word
+
+        return best_guess
+
+    def solve(self, target: str, guess_method: str = "random") -> Tuple[bool, int]:
+        """Attempt to solve Wordle for the given target word using specified guess method.
+        guess_method: 'random', 'entropy', or 'frequency'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
         self.guesses = []
         self.feedbacks = []
 
+        # Select the guessing method
+        if guess_method == "random":
+            choose_func = self.choose_guess_random
+        elif guess_method == "entropy":
+            choose_func = self.choose_guess_entropy
+        elif guess_method == "frequency":
+            choose_func = self.choose_guess_frequency
+        else:
+            raise ValueError("Invalid guess_method. Use 'random', 'entropy', or 'frequency'.")
+
         for attempt in range(self.max_guesses):
-            guess = self.choose_guess()
+            guess = choose_func()
             if not guess:
                 return False, attempt
 
@@ -76,7 +142,7 @@ class WordleSolver:
             self.guesses.append(guess)
             self.feedbacks.append(feedback)
 
-            print(f"Guess {attempt + 1}: {guess} -> {feedback}")
+            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Method: {guess_method})")
 
             if feedback == 'G' * self.word_length:
                 return True, attempt + 1
@@ -95,17 +161,18 @@ def main():
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
 
-    # Create solver instance
-    solver = WordleSolver(word_list)
+    # Test each guessing method
+    target = "smile"
+    methods = ["random", "entropy", "frequency"]
 
-    # Test with a target word
-    target = "smile"  # Change this to test different words
-    solved, attempts = solver.solve(target)
-
-    if solved:
-        print(f"Solved in {attempts} guesses!")
-    else:
-        print(f"Failed to solve after {attempts} guesses.")
+    for method in methods:
+        print(f"\nTesting {method} method:")
+        solver = WordleSolver(word_list)
+        solved, attempts = solver.solve(target, guess_method=method)
+        if solved:
+            print(f"Solved in {attempts} guesses!")
+        else:
+            print(f"Failed to solve after {attempts} guesses.")
 
 if __name__ == "__main__":
     main()
