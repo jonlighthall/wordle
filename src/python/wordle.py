@@ -609,7 +609,8 @@ def main():
         successful_solves = sum(1 for solved, _ in method_results if solved)
         failed_solves = total_tests - successful_solves
 
-        # Count attempts that exceeded 6 guesses (Wordle limit)
+        # Count wins (solved within 6 guesses) and losses (exceeded 6 guesses or failed)
+        wins = sum(1 for solved, attempts in method_results if solved and attempts <= 6)
         exceeded_limit = sum(1 for solved, attempts in method_results if attempts > 6)
 
         if successful_solves > 0:
@@ -623,28 +624,23 @@ def main():
             max_attempts = 0
 
         # Color code the method name based on overall performance
-        if successful_solves == total_tests and avg_attempts <= 4:
+        if wins == total_tests and avg_attempts <= 4:
             color = Colors.GREEN
-        elif successful_solves == total_tests and avg_attempts <= 6:
+        elif wins == total_tests and avg_attempts <= 6:
             color = Colors.YELLOW
         else:
             color = Colors.RED
 
         print(f"{color}{method_key:20}{Colors.RESET} | ", end="")
-        print(f"Success: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ", end="")
+        print(f"Solve: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ", end="")
+        print(f"Win: {wins:2}/{total_tests} ({wins/total_tests*100:5.1f}%) | ", end="")
 
         if successful_solves > 0:
             avg_color = Colors.GREEN if avg_attempts <= 4 else Colors.YELLOW if avg_attempts <= 6 else Colors.RED
             print(f"Avg: {avg_color}{avg_attempts:4.1f}{Colors.RESET} | ", end="")
-            print(f"Range: {min_attempts}-{max_attempts} | ", end="")
+            print(f"Range: {min_attempts}-{max_attempts}")
         else:
-            print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A | ", end="")
-
-        # Display exceeded limit count with color coding
-        if exceeded_limit > 0:
-            print(f"Exceeded 6: {Colors.RED}{exceeded_limit}{Colors.RESET}")
-        else:
-            print(f"Exceeded 6: {Colors.GREEN}0{Colors.RESET}")
+            print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A")
 
     print(f"\n{Colors.GREEN}Legend:{Colors.RESET}")
     print(f"  {Colors.GREEN}Green{Colors.RESET}: Excellent performance (100% success, avg ≤ 4 guesses)")
