@@ -362,12 +362,28 @@ class WordleSolver:
 
         # Calculate combined scores (information + entropy)
         word_scores = []
-        for word in search_space:
+
+        # Add progress indicator for long computations
+        total_words_to_check = len(search_space)
+        progress_interval = max(1, total_words_to_check // 10)  # Print dot every 10%
+
+        if total_words_to_check > 100:  # Only show progress for longer computations
+            print(f"    Computing information scores for {total_words_to_check} words: ", end="", flush=True)
+
+        for i, word in enumerate(search_space):
             info_score = get_word_information_score(word, self.possible_words)
             entropy_score = calculate_entropy(word, self.possible_words)
             # Balance both scores
             combined_score = info_score + entropy_score
             word_scores.append((word, combined_score, info_score, entropy_score))
+
+            # Print progress dots
+            if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                print(".", end="", flush=True)
+
+        # Finish progress line if we started one
+        if total_words_to_check > 100:
+            print(" done")
 
         # Find the best word
         best_word, best_combined, best_info, best_entropy = max(word_scores, key=lambda x: x[1])

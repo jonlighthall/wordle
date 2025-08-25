@@ -15,7 +15,7 @@ def get_feedback(guess: str, target: str) -> str:
     # Validate input lengths
     if len(guess) != len(target):
         raise ValueError(f"Length mismatch: guess='{guess}' ({len(guess)} chars), target='{target}' ({len(target)} chars)")
-    
+
     word_length = len(guess)
     feedback = ['X'] * word_length
     target_chars = list(target)
