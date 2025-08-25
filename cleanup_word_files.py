@@ -18,7 +18,7 @@ from core.wordle_utils import load_words, save_words_to_file
 
 def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int]:
     """
-    Clean a word file by removing duplicates and normalizing case.
+    Clean a word file by removing duplicates, normalizing case, and sorting alphabetically.
 
     Args:
         filepath: Path to the word file
@@ -48,20 +48,27 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
     # Use dict.fromkeys() to remove duplicates while preserving order (Python 3.7+)
     # This is more efficient than using a set and list
     normalized_words = [word.lower().strip() for word in words if word.strip()]
-    cleaned_words = list(dict.fromkeys(word for word in normalized_words if word))
+    deduplicated_words = list(dict.fromkeys(word for word in normalized_words if word))
+    
+    # Check if words were already sorted
+    was_sorted = deduplicated_words == sorted(deduplicated_words)
+    
+    # Sort the words alphabetically
+    cleaned_words = sorted(deduplicated_words)
 
     cleaned_count = len(cleaned_words)
     duplicates_found = original_count - cleaned_count
 
     if dry_run:
-        if duplicates_found > 0:
-            print(f"🔍 Would clean {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates)")
+        if duplicates_found > 0 or not was_sorted:
+            sort_msg = "" if was_sorted else " + sorting"
+            print(f"🔍 Would clean {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates{sort_msg})")
         else:
-            print(f"✅ {filepath}: {original_count} words (no duplicates found)")
+            print(f"✅ {filepath}: {original_count} words (no changes needed)")
         return original_count, cleaned_count, duplicates_found
 
-    # Create backup if duplicates were found
-    if duplicates_found > 0:
+    # Create backup if duplicates were found or file needs sorting
+    if duplicates_found > 0 or not was_sorted:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = filepath.with_suffix(f"{filepath.suffix}.backup_{timestamp}")
 
@@ -75,13 +82,14 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
                 print(f"❌ Failed to save cleaned words to {filepath}")
                 return original_count, original_count, 0
 
-            print(f"✅ Cleaned {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates removed)")
+            sort_msg = "" if was_sorted else " + sorted"
+            print(f"✅ Cleaned {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates removed{sort_msg})")
 
         except Exception as e:
             print(f"❌ Error cleaning {filepath}: {e}")
             return original_count, original_count, 0
     else:
-        print(f"✅ {filepath}: {original_count} words (no duplicates found)")
+        print(f"✅ {filepath}: {original_count} words (no changes needed)")
 
     return original_count, cleaned_count, duplicates_found
 
@@ -89,10 +97,12 @@ def main():
     """Main cleanup function with enhanced options."""
     print("🧹 Wordle Word File Cleanup Utility")
     print("=" * 50)
+    print("Removes duplicates, normalizes case, and sorts words alphabetically")
+    print()
 
     # Add command line argument support
     import argparse
-    parser = argparse.ArgumentParser(description='Clean word files by removing duplicates')
+    parser = argparse.ArgumentParser(description='Clean word files by removing duplicates and sorting alphabetically')
     parser.add_argument('--dry-run', action='store_true',
                        help='Show what would be changed without making changes')
     parser.add_argument('--files', nargs='+',
