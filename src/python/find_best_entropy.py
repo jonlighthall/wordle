@@ -31,9 +31,9 @@ def find_best_entropy_words(word_list: List[str], top_n: int = 10) -> List[Tuple
 
 def main():
     # Load word list from file
-    word_list = load_words("/home/jlighthall/examp/common/words_alpha5_100.txt")
+    word_list = load_words("/home/jlighthall/examp/wordle/data/words_alpha5_100.txt")
     if not word_list:
-        print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5.txt")
+        print("Error: Word file not found at /home/jlighthall/examp/wordle/data/words_alpha5.txt")
         return
     print(f"Loaded {len(word_list)} words from file")
 

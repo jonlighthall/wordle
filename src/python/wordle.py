@@ -359,7 +359,7 @@ def interactive_mode():
     print("="*60)
 
     # Load word list
-    word_file_path = "/home/jlighthall/examp/common/words_alpha5.txt"
+    word_file_path = "/home/jlighthall/examp/wordle/data/words_alpha5.txt"
     word_list = load_words(word_file_path)
     if not word_list:
         print("Word file not found, using fallback list")
@@ -596,7 +596,7 @@ def main():
 
     # Original automated testing code
     # Load word list from file
-    word_list = load_words("/home/jlighthall/examp/common/words_alpha5.txt")
+    word_list = load_words("/home/jlighthall/examp/wordle/data/words_alpha5.txt")
     if not word_list:
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
@@ -605,7 +605,7 @@ def main():
 
     # Test each guessing method with multiple target words and start strategies
     # Check for past Wordle words file first
-    past_words_file = "/home/jlighthall/examp/common/words_past5.txt"
+    past_words_file = "/home/jlighthall/examp/wordle/data/words_past5_date.txt"
     past_words = load_words(past_words_file)
 
     if past_words:
