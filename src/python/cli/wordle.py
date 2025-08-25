@@ -3,7 +3,7 @@ import math
 import os
 from collections import Counter
 from typing import List, Tuple
-from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file
+from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
 
 # Get the repository root directory (3 levels up from this file)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
@@ -104,7 +104,7 @@ def write_solver_state_after_6(target: str, method: str, strategy: str, possible
         print(f"    Warning: Could not log solver state to {filename}: {e}")
 
 class WordleSolver:
-    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None):
+    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None, hard_mode: bool = False):
         """Initialize the solver (like a constructor in C++)."""
         self.word_list = word_list  # List of possible words (like a Fortran array)
         self.word_length = word_length  # Length of words (default 5 for Wordle)
@@ -113,6 +113,7 @@ class WordleSolver:
         self.guesses = []  # Store guesses made
         self.feedbacks = []  # Store feedback for each guess
         self.word_file_path = word_file_path  # Path to word file for saving when words are removed
+        self.hard_mode = hard_mode  # Force solver to use revealed information
 
     def filter_words_unique_letters(self, word_list: List[str]) -> List[str]:
         """Filter word list to only include words with unique letters."""
@@ -156,7 +157,7 @@ class WordleSolver:
                 return random.choice(isogram_candidates)
 
         if len(self.guesses) == 0:
-            return "crane"  # Common first guess in Wordle (hardcoded for simplicity)
+            return "roate"  # Better first guess than crane
         return random.choice(self.possible_words)
 
     def choose_guess_entropy(self, use_optimal_start: bool = False) -> str:
@@ -168,7 +169,7 @@ class WordleSolver:
         # Handle first guess
         if len(self.guesses) == 0:
             if not use_optimal_start:
-                return "tares"  # Hardcoded first guess based on results from previous analysis
+                return "roate"  # Optimal entropy-based starting word (better than tares)
             else:
                 print("    Computing optimal entropy-based first guess from full word list...")
 
@@ -243,7 +244,7 @@ class WordleSolver:
         # Handle first guess with different strategies
         if len(self.guesses) == 0:
             if start_strategy == "fixed":
-                return "cares"  # Hardcoded first guess based on isogram results
+                return "roate"  # Optimal frequency-based starting word (better than cares)
             elif start_strategy == "random":
                 chosen = random.choice(self.word_list)
                 print(f"    Random first guess: '{chosen}'")
@@ -331,9 +332,65 @@ class WordleSolver:
             print(f"    Best word: '{word}' with {score_type} frequency score {freq_score} (likelihood {likelihood_score:.3f}) from {search_desc}")
             return word
 
+    def choose_guess_information(self, use_optimal_start: bool = False) -> str:
+        """Choose a guess based on information content and position frequencies."""
+        if not self.possible_words:
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
+
+        # Handle first guess
+        if len(self.guesses) == 0:
+            return "roate"  # Optimal starting word
+
+        # If very few possibilities left, just guess one of them
+        if len(self.possible_words) <= 2:
+            return self.possible_words[0]
+
+        # For subsequent guesses, use possible words for search
+        search_space = self.possible_words.copy()
+
+        # Prefer isograms when it makes sense
+        if should_prefer_isograms(self.possible_words, len(self.guesses)):
+            unique_search_space = self.filter_words_unique_letters(search_space)
+            if unique_search_space and len(unique_search_space) >= len(search_space) * 0.3:
+                search_space = unique_search_space
+                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+
+        # Calculate combined scores (information + entropy)
+        word_scores = []
+        for word in search_space:
+            info_score = get_word_information_score(word, self.possible_words)
+            entropy_score = calculate_entropy(word, self.possible_words)
+            # Balance both scores
+            combined_score = info_score + entropy_score
+            word_scores.append((word, combined_score, info_score, entropy_score))
+
+        # Find the best word
+        best_word, best_combined, best_info, best_entropy = max(word_scores, key=lambda x: x[1])
+
+        print(f"    Best word: '{best_word}' with info score {best_info:.3f}, entropy {best_entropy:.3f} from possible words")
+        return best_word
+
+    def is_valid_hard_mode_guess(self, guess: str) -> bool:
+        """Check if a guess is valid in hard mode (must use all revealed information)."""
+        if not self.hard_mode or not self.guesses:
+            return True
+
+        # Check against each previous guess/feedback pair
+        for prev_guess, prev_feedback in zip(self.guesses, self.feedbacks):
+            for i, (g_char, f_char) in enumerate(zip(prev_guess, prev_feedback)):
+                if f_char == 'G':  # Green letter must be in same position
+                    if guess[i] != g_char:
+                        return False
+                elif f_char == 'Y':  # Yellow letter must be somewhere else in the word
+                    if g_char not in guess or guess[i] == g_char:
+                        return False
+
+        return True
+
     def solve(self, target: str, guess_method: str = "random", start_strategy: str = "fixed") -> Tuple[bool, int]:
         """Attempt to solve Wordle for the given target word using specified guess method.
-        guess_method: 'random', 'entropy', or 'frequency'.
+        guess_method: 'random', 'entropy', 'frequency', or 'information'.
         start_strategy: For frequency method: 'fixed', 'random', 'highest', 'lowest'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
@@ -347,8 +404,10 @@ class WordleSolver:
             choose_func = lambda: self.choose_guess_entropy(False)  # Never use optimal start for entropy
         elif guess_method == "frequency":
             choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
+        elif guess_method == "information":
+            choose_func = lambda: self.choose_guess_information(False)
         else:
-            raise ValueError("Invalid guess_method. Use 'random', 'entropy', or 'frequency'.")
+            raise ValueError("Invalid guess_method. Use 'random', 'entropy', 'frequency', or 'information'.")
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -396,10 +455,11 @@ def interactive_mode():
     print("1. Random guesses")
     print("2. Entropy-based (information theory)")
     print("3. Frequency-based (letter frequency)")
+    print("4. Information-based (hybrid approach)")
 
     while True:
         try:
-            method_choice = input("\nEnter choice (1-3): ").strip()
+            method_choice = input("\nEnter choice (1-4): ").strip()
             if method_choice == "1":
                 guess_method = "random"
                 break
@@ -436,8 +496,11 @@ def interactive_mode():
                         print("\nGoodbye!")
                         return
                 break
+            elif method_choice == "4":
+                guess_method = "information"
+                break
             else:
-                print("Invalid choice. Please enter 1-3.")
+                print("Invalid choice. Please enter 1-4.")
         except KeyboardInterrupt:
             print("\nGoodbye!")
             return
@@ -695,7 +758,7 @@ def automated_testing():
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
-    methods = ["random", "entropy", "frequency"]
+    methods = ["random", "entropy", "frequency", "information"]
 
     # Track results for summary
     results = {}
@@ -750,8 +813,9 @@ def automated_testing():
                     results[key] = []
                 results[key].append((solved, attempts))
 
-            else:  # frequency method
-                # Frequency method: only test fixed start (like other methods)
+            else:  # frequency or information method
+                # Only test fixed start for these methods
+                method_name = method.capitalize()
                 print(f"\nTesting {method} method (fixed start):")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method, start_strategy="fixed")

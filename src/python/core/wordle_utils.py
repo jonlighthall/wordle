@@ -183,3 +183,71 @@ def save_words_to_file(filename: str, words: List[str]) -> bool:
     except Exception as e:
         print(f"Error saving words to {filename}: {e}")
         return False
+
+
+def calculate_position_frequencies(words: List[str]) -> List[Counter]:
+    """Calculate letter frequencies for each position."""
+    word_length = 5  # Assuming 5-letter words
+    position_freqs = [Counter() for _ in range(word_length)]
+
+    for word in words:
+        for i, letter in enumerate(word):
+            position_freqs[i][letter] += 1
+
+    return position_freqs
+
+
+def get_word_information_score(word: str, possible_words: List[str]) -> float:
+    """Calculate an information score for a word based on position frequencies."""
+    if not possible_words:
+        return 0.0
+
+    position_freqs = calculate_position_frequencies(possible_words)
+    total_words = len(possible_words)
+
+    score = 0.0
+    used_letters = set()
+
+    for i, letter in enumerate(word):
+        # Frequency of this letter in this position
+        pos_freq = position_freqs[i].get(letter, 0)
+        # Bonus for letters we haven't used yet (encourages diversity)
+        diversity_bonus = 1.0 if letter not in used_letters else 0.5
+        # Information content (inverse frequency gives more points for rare letters)
+        info_score = (total_words - pos_freq) / total_words * diversity_bonus
+        score += info_score
+        used_letters.add(letter)
+
+    return score
+
+
+def get_optimal_endgame_guess(possible_words: List[str], word_list: List[str]) -> str:
+    """Get optimal guess when few possibilities remain."""
+    if len(possible_words) <= 1:
+        return possible_words[0] if possible_words else None
+
+    if len(possible_words) == 2:
+        # With 2 possibilities, just guess one
+        return possible_words[0]
+
+    if len(possible_words) <= 4:
+        # With 3-4 possibilities, find best discriminator
+        best_word = None
+        best_score = -1
+
+        # Consider both possible words and some exploration words
+        candidates = list(set(possible_words + [w for w in word_list if has_unique_letters(w)][:50]))
+
+        for word in candidates:
+            entropy = calculate_entropy(word, possible_words)
+            # Slight preference for actual possible answers
+            bonus = 0.1 if word in possible_words else 0.0
+            score = entropy + bonus
+
+            if score > best_score:
+                best_score = score
+                best_word = word
+
+        return best_word
+
+    return None  # Use normal strategy
