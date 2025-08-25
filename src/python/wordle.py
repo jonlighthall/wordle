@@ -152,7 +152,7 @@ class WordleSolver:
             print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f} from {search_desc}")
             return top_words[0]
 
-    def choose_guess_frequency(self, use_optimal_start: bool = False, start_strategy: str = "crane") -> str:
+    def choose_guess_frequency(self, use_optimal_start: bool = False, start_strategy: str = "fixed") -> str:
         """Choose a guess based on letter frequency/likelihood in each position with entropy tie-breaking."""
         if not self.possible_words:
             print("    No possible words left, using random from full list")
@@ -160,7 +160,7 @@ class WordleSolver:
 
         # Handle first guess with different strategies
         if len(self.guesses) == 0:
-            if start_strategy == "crane":
+            if start_strategy == "fixed":
                 return "cares"  # Hardcoded first guess based on isogram results
             elif start_strategy == "random":
                 chosen = random.choice(self.word_list)
@@ -249,10 +249,10 @@ class WordleSolver:
             print(f"    Best word: '{word}' with {score_type} frequency score {freq_score} (likelihood {likelihood_score:.3f}) from {search_desc}")
             return word
 
-    def solve(self, target: str, guess_method: str = "random", start_strategy: str = "crane") -> Tuple[bool, int]:
+    def solve(self, target: str, guess_method: str = "random", start_strategy: str = "fixed") -> Tuple[bool, int]:
         """Attempt to solve Wordle for the given target word using specified guess method.
         guess_method: 'random', 'entropy', or 'frequency'.
-        start_strategy: For frequency method: 'crane', 'random', 'highest', 'lowest'.
+        start_strategy: For frequency method: 'fixed', 'random', 'highest', 'lowest'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
         self.guesses = []
@@ -278,7 +278,7 @@ class WordleSolver:
             self.feedbacks.append(feedback)
 
             method_desc = f"{guess_method}"
-            if attempt == 0 and start_strategy != "crane":
+            if attempt == 0 and start_strategy != "fixed":
                 method_desc += f" ({start_strategy} start)"
             print(f"Guess {attempt + 1}: {guess} -> {feedback} (Method: {method_desc})")
 
@@ -324,7 +324,7 @@ def interactive_mode():
                 guess_method = "frequency"
                 # Choose start strategy for frequency method
                 print("\nChoose starting strategy:")
-                print("1. crane (classic)")
+                print("1. fixed (classic)")
                 print("2. random")
                 print("3. highest frequency")
                 print("4. lowest frequency")
@@ -333,7 +333,7 @@ def interactive_mode():
                     try:
                         start_choice = input("Enter choice (1-4): ").strip()
                         if start_choice == "1":
-                            start_strategy = "crane"
+                            start_strategy = "fixed"
                             break
                         elif start_choice == "2":
                             start_strategy = "random"
@@ -361,9 +361,9 @@ def interactive_mode():
         solver = WordleSolver(word_list, word_file_path=word_file_path)
     else:
         solver = WordleSolver(word_list, word_file_path=word_file_path)
-        start_strategy = "crane"  # Default for non-frequency methods
+        start_strategy = "fixed"  # Default for non-frequency methods
 
-    print(f"\n🤖 Using {guess_method} method" + (f" with {start_strategy} start" if guess_method == "frequency" and start_strategy != "crane" else ""))
+    print(f"\n🤖 Using {guess_method} method" + (f" with {start_strategy} start" if guess_method == "frequency" and start_strategy != "fixed" else ""))
 
     # Choose target word mode
     print("\nHow do you want to set the target word?")
@@ -582,7 +582,7 @@ def main():
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
     methods = ["random", "entropy", "frequency"]
-    start_strategies = ["crane", "random", "highest", "lowest"]
+    start_strategies = ["fixed", "random", "highest", "lowest"]
 
     # Track results for summary
     results = {}
@@ -598,7 +598,7 @@ def main():
             print(f"{'-'*60}")
 
             if method == "random":
-                # Random method only uses crane start
+                # Random method only uses random start
                 print(f"\nTesting {method} method:")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method)
@@ -611,14 +611,14 @@ def main():
                 results[key].append((solved, attempts))
 
             elif method == "entropy":
-                # Entropy method: only test crane start (highest is too slow)
+                # Entropy method: only test fixed start (highest is too slow)
                 print(f"\nTesting {method} method (hard-coded start):")
                 solver = WordleSolver(word_list)
-                solved, attempts = solver.solve(target, guess_method=method, start_strategy="crane")
+                solved, attempts = solver.solve(target, guess_method=method, start_strategy="fixed")
                 print(format_result(solved, attempts))
 
                 # Track results
-                key = f"{method} (crane)"
+                key = f"{method} (fixed)"
                 if key not in results:
                     results[key] = []
                 results[key].append((solved, attempts))
