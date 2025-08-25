@@ -1,8 +1,14 @@
 import random
 import math
+import os
 from collections import Counter
 from typing import List, Tuple
-from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file
+from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file
+
+# Get the repository root directory (3 levels up from this file)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+DATA_DIR = os.path.join(REPO_ROOT, 'data')
+LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 
 # ANSI color codes for terminal output
 class Colors:
@@ -45,7 +51,7 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
 
     # Also save to simple words_missing.txt file
     try:
-        with open("/home/jlighthall/examp/wordle/data/words_missing.txt", "a") as f:
+        with open(os.path.join(DATA_DIR, "words_missing.txt"), "a") as f:
             f.write(f"{word.upper()}\n")
         print(f"    Failed word added to words_missing.txt")
     except Exception as e:
@@ -54,7 +60,7 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
 def write_challenging_word(word: str):
     """Write a word that took more than 6 guesses to solve."""
     try:
-        with open("/home/jlighthall/examp/wordle/data/words_challenging.txt", "a") as f:
+        with open(os.path.join(DATA_DIR, "words_challenging.txt"), "a") as f:
             f.write(f"{word.upper()}\n")
         print(f"    Challenging word added to words_challenging.txt")
     except Exception as e:
@@ -376,7 +382,7 @@ def interactive_mode():
     print("="*60)
 
     # Load word list
-    word_file_path = "/home/jlighthall/examp/wordle/data/words_alpha5.txt"
+    word_file_path = os.path.join(DATA_DIR, "words_alpha5.txt")
     word_list = load_words(word_file_path)
     if not word_list:
         print("Word file not found, using fallback list")
@@ -613,7 +619,7 @@ def main():
 
     # Original automated testing code
     # Load word list from file
-    word_list = load_words("/home/jlighthall/examp/wordle/data/words_alpha5.txt")
+    word_list = load_words(os.path.join(DATA_DIR, "words_alpha5.txt"))
     if not word_list:
         print("Word file not found, using fallback list")
         word_list = ["crane", "house", "smile", "grape", "stone", "flame", "lakes"]
@@ -622,7 +628,7 @@ def main():
 
     # Test each guessing method with multiple target words and start strategies
     # Check for past Wordle words file first
-    past_words_file = "/home/jlighthall/examp/wordle/data/words_past5_date.txt"
+    past_words_file = os.path.join(DATA_DIR, "words_past5_date.txt")
     past_words = load_words(past_words_file)
 
     if past_words:

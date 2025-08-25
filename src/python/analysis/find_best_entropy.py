@@ -5,9 +5,14 @@ This calculates the entropy for each word when used as a first guess.
 """
 
 import math
+import os
 from collections import Counter
 from typing import List, Tuple
-from wordle_utils import get_feedback, calculate_entropy, load_words
+from ..core.wordle_utils import get_feedback, calculate_entropy, load_words
+
+# Get the repository root directory (4 levels up from this file)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+DATA_DIR = os.path.join(REPO_ROOT, 'data')
 
 
 def find_best_entropy_words(word_list: List[str], top_n: int = 10) -> List[Tuple[str, float]]:
@@ -34,9 +39,9 @@ def find_best_entropy_words(word_list: List[str], top_n: int = 10) -> List[Tuple
 
 def main():
     # Load word list from file
-    word_list = load_words("/home/jlighthall/examp/wordle/data/words_alpha5_100.txt")
+    word_list = load_words(os.path.join(DATA_DIR, "words_alpha5_100.txt"))
     if not word_list:
-        print("Error: Word file not found at /home/jlighthall/examp/wordle/data/words_alpha5.txt")
+        print("Error: Word file not found at data/words_alpha5.txt")
         return
     print(f"Loaded {len(word_list)} words from file")
 
