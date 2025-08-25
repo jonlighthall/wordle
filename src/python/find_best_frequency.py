@@ -22,6 +22,26 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
         for i, char in enumerate(w):
             freq[i][char] += 1
 
+    # After calculating frequencies, show the most likely letter in each position
+    most_likely_letters = []
+    print(f"\nMost likely letters by position:")
+    for i in range(word_length):
+        if freq[i]:  # Check if position has any letters
+            most_common_letter = freq[i].most_common(1)[0][0]
+            most_likely_letters.append(most_common_letter)
+            print(f"Position {i+1}: '{most_common_letter}' (appears {freq[i][most_common_letter]} times)")
+        else:
+            most_likely_letters.append('?')
+            print(f"Position {i+1}: No data")
+
+    # Create word from most likely letters and check if it exists
+    most_likely_word = ''.join(most_likely_letters)
+    print(f"\nWord formed from most likely letters: '{most_likely_word}'")
+    if most_likely_word in word_list:
+        print(f"✓ '{most_likely_word}' is a valid word in the list!")
+    else:
+        print(f"✗ '{most_likely_word}' is not in the word list")
+
     # Calculate raw frequency score and normalized likelihood score
     freq_score = sum(freq[i][word[i]] for i in range(word_length))
     likelihood_score = freq_score / total_words
@@ -99,6 +119,9 @@ def main():
         print("Error: Word file not found at /home/jlighthall/examp/wordle/data/words_alpha5.txt")
         return
     print(f"Loaded {len(word_list)} words from file")
+
+    # Print most likely letters by position
+    calculate_frequency_score(word_list[0], word_list)
 
     # Find highest frequency words
     print(f"\n{'='*80}")
