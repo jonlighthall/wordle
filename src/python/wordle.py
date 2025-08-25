@@ -43,13 +43,30 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     except Exception as e:
         print(f"    Warning: Could not log failed word to {filename}: {e}")
 
+    # Also save to simple words_missing.txt file
+    try:
+        with open("/home/jlighthall/examp/wordle/data/words_missing.txt", "a") as f:
+            f.write(f"{word.upper()}\n")
+        print(f"    Failed word added to words_missing.txt")
+    except Exception as e:
+        print(f"    Warning: Could not add word to words_missing.txt: {e}")
+
+def write_challenging_word(word: str):
+    """Write a word that took more than 6 guesses to solve."""
+    try:
+        with open("/home/jlighthall/examp/wordle/data/words_challenging.txt", "a") as f:
+            f.write(f"{word.upper()}\n")
+        print(f"    Challenging word added to words_challenging.txt")
+    except Exception as e:
+        print(f"    Warning: Could not add word to words_challenging.txt: {e}")
+
 def write_solver_state_after_6(target: str, method: str, strategy: str, possible_words: List[str]):
     """Write solver state when it exceeds 6 guesses (Wordle limit)."""
     import datetime
 
     # Create filename with current date
     date_str = datetime.datetime.now().strftime("%Y%m%d")
-    filename = f"solver_state_after_6_{date_str}.txt"
+    filename = f"solver_state_after_6_{date_str}.log"
 
     # Format the entry
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -669,6 +686,9 @@ def main():
                 # Log failed words
                 if not solved:
                     write_failed_word(target, method)
+                # Log challenging words (solved but > 6 guesses)
+                elif solved and attempts > 6:
+                    write_challenging_word(target)
 
                 # Track results
                 key = f"{method}"
@@ -686,6 +706,9 @@ def main():
                 # Log failed words
                 if not solved:
                     write_failed_word(target, method, "fixed")
+                # Log challenging words (solved but > 6 guesses)
+                elif solved and attempts > 6:
+                    write_challenging_word(target)
 
                 # Track results
                 key = f"{method} (fixed)"
@@ -703,6 +726,9 @@ def main():
                 # Log failed words
                 if not solved:
                     write_failed_word(target, method, "fixed")
+                # Log challenging words (solved but > 6 guesses)
+                elif solved and attempts > 6:
+                    write_challenging_word(target)
 
                 # Track results
                 key = f"{method} (fixed)"
