@@ -21,6 +21,65 @@ def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
     else:
         return f"{Colors.RED}✗ Failed to solve after {attempts} guesses.{Colors.RESET}"
 
+def write_failed_word(word: str, method: str, strategy: str = "fixed"):
+    """Write a failed word to a log file with timestamp and method info."""
+    import datetime
+
+    # Create filename with current date
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    filename = f"failed_words_{date_str}.txt"
+
+    # Format the entry
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = f"{timestamp} | {word.upper()} | {method}"
+    if strategy != "fixed":
+        entry += f" ({strategy})"
+    entry += "\n"
+
+    try:
+        with open(filename, "a") as f:
+            f.write(entry)
+        print(f"    Failed word logged to {filename}")
+    except Exception as e:
+        print(f"    Warning: Could not log failed word to {filename}: {e}")
+
+def write_solver_state_after_6(target: str, method: str, strategy: str, possible_words: List[str]):
+    """Write solver state when it exceeds 6 guesses (Wordle limit)."""
+    import datetime
+
+    # Create filename with current date
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    filename = f"solver_state_after_6_{date_str}.txt"
+
+    # Format the entry
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    num_remaining = len(possible_words)
+
+    # Create header line
+    method_info = f"{method}"
+    if strategy != "fixed":
+        method_info += f" ({strategy})"
+
+    entry = f"{timestamp} | {target.upper()} | {method_info} | {num_remaining} words remaining\n"
+
+    # Add the remaining words (limit to first 50 for readability)
+    if num_remaining > 0:
+        if num_remaining <= 50:
+            entry += f"Remaining words: {', '.join([w.upper() for w in sorted(possible_words)])}\n"
+        else:
+            entry += f"First 50 remaining words: {', '.join([w.upper() for w in sorted(possible_words)[:50]])}\n"
+    else:
+        entry += "No remaining words (solver error)\n"
+
+    entry += "-" * 80 + "\n"  # Separator line
+
+    try:
+        with open(filename, "a") as f:
+            f.write(entry)
+        print(f"    Solver state after 6 guesses logged to {filename}")
+    except Exception as e:
+        print(f"    Warning: Could not log solver state to {filename}: {e}")
+
 class WordleSolver:
     def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None):
         """Initialize the solver (like a constructor in C++)."""
@@ -286,6 +345,10 @@ class WordleSolver:
                 return True, attempt + 1
 
             self.filter_words(guess, feedback)
+
+            # Log solver state if we just completed the 6th guess without solving
+            if attempt + 1 == 6 and feedback != 'G' * self.word_length:
+                write_solver_state_after_6(target, guess_method, start_strategy, self.possible_words)
 
         return False, self.max_guesses
 
@@ -582,7 +645,6 @@ def main():
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
     methods = ["random", "entropy", "frequency"]
-    start_strategies = ["fixed", "random", "highest", "lowest"]
 
     # Track results for summary
     results = {}
@@ -604,6 +666,10 @@ def main():
                 solved, attempts = solver.solve(target, guess_method=method)
                 print(format_result(solved, attempts))
 
+                # Log failed words
+                if not solved:
+                    write_failed_word(target, method)
+
                 # Track results
                 key = f"{method}"
                 if key not in results:
@@ -612,10 +678,14 @@ def main():
 
             elif method == "entropy":
                 # Entropy method: only test fixed start (highest is too slow)
-                print(f"\nTesting {method} method (hard-coded start):")
+                print(f"\nTesting {method} method (fixed start):")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method, start_strategy="fixed")
                 print(format_result(solved, attempts))
+
+                # Log failed words
+                if not solved:
+                    write_failed_word(target, method, "fixed")
 
                 # Track results
                 key = f"{method} (fixed)"
@@ -624,18 +694,21 @@ def main():
                 results[key].append((solved, attempts))
 
             else:  # frequency method
-                # Frequency method: test all start strategies
-                for strategy in start_strategies:
-                    print(f"\nTesting {method} method ({strategy} start):")
-                    solver = WordleSolver(word_list)
-                    solved, attempts = solver.solve(target, guess_method=method, start_strategy=strategy)
-                    print(format_result(solved, attempts))
+                # Frequency method: only test fixed start (like other methods)
+                print(f"\nTesting {method} method (fixed start):")
+                solver = WordleSolver(word_list)
+                solved, attempts = solver.solve(target, guess_method=method, start_strategy="fixed")
+                print(format_result(solved, attempts))
 
-                    # Track results
-                    key = f"{method} ({strategy})"
-                    if key not in results:
-                        results[key] = []
-                    results[key].append((solved, attempts))
+                # Log failed words
+                if not solved:
+                    write_failed_word(target, method, "fixed")
+
+                # Track results
+                key = f"{method} (fixed)"
+                if key not in results:
+                    results[key] = []
+                results[key].append((solved, attempts))
 
     # Print summary of results
     print(f"\n{'='*80}")
