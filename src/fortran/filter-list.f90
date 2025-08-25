@@ -2,19 +2,20 @@
 
 program filter
   implicit none
-  integer(kind=4) :: read_unit,ierr,write_unit
+  integer(kind=4) :: read_unit, write_unit, ierr
   character(len=64) :: line
   integer :: nlines = 0, n5 = 0
   integer :: length,mxlen = 0
 
-  open(newunit=read_unit,file='words_alpha.txt',iostat=ierr,status='old',action='read')
+  open(newunit=read_unit,file='data/words_alpha.txt',iostat=ierr,status='old',action='read')
   print *,'iostat = ',ierr
   if (ierr==0) then
      print*,'OK'
   else
      print*,'ERROR'
+     stop
   endif
-  open(newunit=write_unit,file='words_alpha5.txt')
+  open(newunit=write_unit,file='data/words_alpha5.txt')
   do
      read(read_unit,'(a)',iostat=ierr) line
      length = len(trim(line))
