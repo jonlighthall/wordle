@@ -8,6 +8,7 @@ A comprehensive Wordle analysis and solver suite written in Python and Fortran.
 wordle/
 ├── run_wordle.py          # Main entry point - run this from the repository root
 ├── cleanup_word_files.py  # Word file cleanup utility - removes duplicates
+├── OPTIMIZATION.md        # Performance optimization guide and recommendations
 ├── bin/                   # Compiled executables
 │   ├── filter-list        # Fortran utility
 │   └── wordle             # Fortran Wordle solver
@@ -63,7 +64,11 @@ This will present you with a menu of options:
 ```bash
 # Clean word files (remove duplicates)
 python3 cleanup_word_files.py
+python3 cleanup_word_files.py --dry-run  # Preview changes
+python3 cleanup_word_files.py --files words_missing.txt  # Clean specific file
 ```
+
+For detailed optimization recommendations, see `OPTIMIZATION.md`.
 
 ### Running Individual Components
 
