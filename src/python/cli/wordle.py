@@ -31,9 +31,9 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     """Write a failed word to a log file with timestamp and method info."""
     import datetime
 
-    # Create filename with current date
+    # Create filename with current date in the logs directory
     date_str = datetime.datetime.now().strftime("%Y%m%d")
-    filename = f"failed_words_{date_str}.txt"
+    filename = os.path.join(LOGS_DIR, f"failed_words_{date_str}.txt")
 
     # Format the entry
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -43,6 +43,8 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     entry += "\n"
 
     try:
+        # Ensure logs directory exists
+        os.makedirs(LOGS_DIR, exist_ok=True)
         with open(filename, "a") as f:
             f.write(entry)
         print(f"    Failed word logged to {filename}")
@@ -70,9 +72,9 @@ def write_solver_state_after_6(target: str, method: str, strategy: str, possible
     """Write solver state when it exceeds 6 guesses (Wordle limit)."""
     import datetime
 
-    # Create filename with current date
+    # Create filename with current date in the logs directory
     date_str = datetime.datetime.now().strftime("%Y%m%d")
-    filename = f"solver_state_after_6_{date_str}.log"
+    filename = os.path.join(LOGS_DIR, f"solver_state_after_6_{date_str}.log")
 
     # Format the entry
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -97,6 +99,8 @@ def write_solver_state_after_6(target: str, method: str, strategy: str, possible
     entry += "-" * 80 + "\n"  # Separator line
 
     try:
+        # Ensure logs directory exists
+        os.makedirs(LOGS_DIR, exist_ok=True)
         with open(filename, "a") as f:
             f.write(entry)
         print(f"    Solver state after 6 guesses logged to {filename}")
