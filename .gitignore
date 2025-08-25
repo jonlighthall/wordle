@@ -45,6 +45,7 @@ fort.?
 # logs
 logs/*
 solver_state_after_6_*.*
+failed_words*
 
 #----------------
 # word lists
