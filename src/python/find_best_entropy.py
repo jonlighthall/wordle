@@ -16,10 +16,13 @@ def find_best_entropy_words(word_list: List[str], top_n: int = 10) -> List[Tuple
     print("This may take a few minutes...")
 
     word_entropies = []
+    total_words = len(word_list)
+    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
 
     for i, guess in enumerate(word_list):
-        if i % 1000 == 0:
-            print(f"Progress: {i}/{len(word_list)} words processed...")
+        if i % step_size == 0 or i == total_words - 1:
+            progress_percent = (i / total_words) * 100
+            print(f"Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
 
         entropy = calculate_entropy(guess, word_list)
         word_entropies.append((guess, entropy))
