@@ -4,6 +4,23 @@ from collections import Counter
 from typing import List, Tuple
 from wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file
 
+# ANSI color codes for terminal output
+class Colors:
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RESET = '\033[0m'  # Reset to default color
+
+def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
+    """Format the solve result with appropriate colors."""
+    if solved:
+        if attempts <= wordle_limit:
+            return f"{Colors.GREEN}✓ Solved in {attempts} guesses!{Colors.RESET}"
+        else:
+            return f"{Colors.RED}✓ Solved in {attempts} guesses (exceeds Wordle limit of {wordle_limit})!{Colors.RESET}"
+    else:
+        return f"{Colors.RED}✗ Failed to solve after {attempts} guesses.{Colors.RESET}"
+
 class WordleSolver:
     def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None):
         """Initialize the solver (like a constructor in C++)."""
@@ -69,7 +86,7 @@ class WordleSolver:
         # Handle first guess
         if len(self.guesses) == 0:
             if not use_optimal_start:
-                return "crane"  # Hardcoded first guess for simplicity
+                return "tares"  # Hardcoded first guess based on results from previous analysis
             else:
                 print("    Computing optimal entropy-based first guess from full word list...")
 
@@ -129,7 +146,7 @@ class WordleSolver:
         # Handle first guess with different strategies
         if len(self.guesses) == 0:
             if start_strategy == "crane":
-                return "crane"  # Hardcoded first guess
+                return "cares"  # Hardcoded first guess based on isogram results
             elif start_strategy == "random":
                 chosen = random.choice(self.word_list)
                 print(f"    Random first guess: '{chosen}'")
@@ -509,7 +526,19 @@ def main():
         print(f"Loaded {len(word_list)} words from file")
 
     # Test each guessing method with multiple target words and start strategies
-    test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
+    # Check for past Wordle words file first
+    past_words_file = "/home/jlighthall/examp/common/words_past5.txt"
+    past_words = load_words(past_words_file)
+
+    if past_words:
+        print(f"Found past Wordle words file: {len(past_words)} words")
+        test_words = past_words[:10]  # Use first 10 past words for testing
+        print(f"Using first 10 past Wordle words for testing: {[w.upper() for w in test_words]}")
+    else:
+        print("Past Wordle words file not found, using default test words")
+        test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
+        print(f"Using default test words: {[w.upper() for w in test_words]}")
+
     methods = ["random", "entropy", "frequency"]
     start_strategies = ["crane", "random", "highest", "lowest"]
 
@@ -528,20 +557,14 @@ def main():
                 print(f"\nTesting {method} method:")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method)
-                if solved:
-                    print(f"✓ Solved in {attempts} guesses!")
-                else:
-                    print(f"✗ Failed to solve after {attempts} guesses.")
+                print(format_result(solved, attempts))
 
             elif method == "entropy":
                 # Entropy method: only test crane start (highest is too slow)
                 print(f"\nTesting {method} method (crane start):")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method, start_strategy="crane")
-                if solved:
-                    print(f"✓ Solved in {attempts} guesses!")
-                else:
-                    print(f"✗ Failed to solve after {attempts} guesses.")
+                print(format_result(solved, attempts))
 
             else:  # frequency method
                 # Frequency method: test all start strategies
@@ -549,10 +572,7 @@ def main():
                     print(f"\nTesting {method} method ({strategy} start):")
                     solver = WordleSolver(word_list)
                     solved, attempts = solver.solve(target, guess_method=method, start_strategy=strategy)
-                    if solved:
-                        print(f"✓ Solved in {attempts} guesses!")
-                    else:
-                        print(f"✗ Failed to solve after {attempts} guesses.")
+                    print(format_result(solved, attempts))
 
 if __name__ == "__main__":
     main()
