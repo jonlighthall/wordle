@@ -43,7 +43,8 @@ fort.?
 #----------------
 
 # logs
-solver_state_after_6_*.txt
+logs/*
+solver_state_after_6_*.*
 
 #----------------
 # word lists
