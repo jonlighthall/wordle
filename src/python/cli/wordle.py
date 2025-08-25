@@ -3,6 +3,8 @@ import math
 import os
 from collections import Counter
 from typing import List, Tuple
+from multiprocessing import Pool, cpu_count
+from functools import partial
 from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
 
 # Get the repository root directory (3 levels up from this file)
@@ -16,6 +18,45 @@ class Colors:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RESET = '\033[0m'  # Reset to default color
+
+def calculate_entropy_for_word(args):
+    """Helper function for parallel entropy calculation.
+
+    Args:
+        args: Tuple of (guess_word, possible_words_list)
+
+    Returns:
+        Tuple of (guess_word, entropy_value)
+    """
+    guess, possible_words = args
+    pattern_counts = Counter()
+
+    for possible_target in possible_words:
+        feedback = get_feedback(guess, possible_target)
+        pattern_counts[feedback] += 1
+
+    total_words = len(possible_words)
+    entropy = 0
+    for count in pattern_counts.values():
+        probability = count / total_words
+        entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+    return (guess, entropy)
+
+def calculate_information_for_word(args):
+    """Helper function for parallel information score calculation.
+
+    Args:
+        args: Tuple of (guess_word, possible_words_list)
+
+    Returns:
+        Tuple of (guess_word, combined_score, info_score, entropy_score)
+    """
+    word, possible_words = args
+    info_score = get_word_information_score(word, possible_words)
+    entropy_score = calculate_entropy(word, possible_words)
+    combined_score = info_score + entropy_score
+    return (word, combined_score, info_score, entropy_score)
 
 def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
     """Format the solve result with appropriate colors."""
@@ -191,32 +232,76 @@ class WordleSolver:
 
         # Add progress indicator for long computations
         total_words_to_check = len(search_space)
-        progress_interval = max(1, total_words_to_check // 10)  # Print dot every 10%
 
         if total_words_to_check > 100:  # Only show progress for longer computations
             print(f"    Computing entropy for {total_words_to_check} words: ", end="", flush=True)
 
-        for i, guess in enumerate(search_space):
-            pattern_counts = Counter()
-            for possible_target in self.possible_words:
-                feedback = get_feedback(guess, possible_target)
-                pattern_counts[feedback] += 1
+        # Use parallel processing for large computations
+        if total_words_to_check > 50:  # Use parallel processing for 50+ words
+            # Prepare arguments for parallel processing
+            args_list = [(guess, self.possible_words) for guess in search_space]
 
-            total_words = len(self.possible_words)
-            entropy = 0
-            for count in pattern_counts.values():
-                probability = count / total_words
-                entropy -= probability * math.log2(probability) if probability > 0 else 0
+            # Use number of CPU cores, but cap at reasonable limit
+            num_processes = min(cpu_count(), max(2, total_words_to_check // 20))
 
-            word_entropies.append((guess, entropy))
+            try:
+                with Pool(processes=num_processes) as pool:
+                    word_entropies = pool.map(calculate_entropy_for_word, args_list)
 
-            # Print progress dots
-            if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
-                print(".", end="", flush=True)
+                if total_words_to_check > 100:
+                    print(" done (parallel)")
 
-        # Finish progress line if we started one
-        if total_words_to_check > 100:
-            print(" done")
+            except Exception as e:
+                # Fall back to sequential processing if parallel fails
+                print(f" (parallel failed: {e}, using sequential)")
+                word_entropies = []
+                progress_interval = max(1, total_words_to_check // 10)
+
+                for i, guess in enumerate(search_space):
+                    pattern_counts = Counter()
+                    for possible_target in self.possible_words:
+                        feedback = get_feedback(guess, possible_target)
+                        pattern_counts[feedback] += 1
+
+                    total_words = len(self.possible_words)
+                    entropy = 0
+                    for count in pattern_counts.values():
+                        probability = count / total_words
+                        entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+                    word_entropies.append((guess, entropy))
+
+                    # Print progress dots
+                    if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                        print(".", end="", flush=True)
+
+                if total_words_to_check > 100:
+                    print(" done")
+        else:
+            # Use sequential processing for smaller computations
+            progress_interval = max(1, total_words_to_check // 10)
+
+            for i, guess in enumerate(search_space):
+                pattern_counts = Counter()
+                for possible_target in self.possible_words:
+                    feedback = get_feedback(guess, possible_target)
+                    pattern_counts[feedback] += 1
+
+                total_words = len(self.possible_words)
+                entropy = 0
+                for count in pattern_counts.values():
+                    probability = count / total_words
+                    entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+                word_entropies.append((guess, entropy))
+
+                # Print progress dots
+                if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                    print(".", end="", flush=True)
+
+            # Finish progress line if we started one
+            if total_words_to_check > 100:
+                print(" done")
 
         # Find the maximum entropy
         max_entropy = max(entropy for _, entropy in word_entropies)
@@ -365,27 +450,62 @@ class WordleSolver:
 
         # Add progress indicator for long computations
         total_words_to_check = len(search_space)
-        progress_interval = max(1, total_words_to_check // 10)  # Print dot every 10%
 
         if total_words_to_check > 100:  # Only show progress for longer computations
             print(f"    Computing information scores for {total_words_to_check} words: ", end="", flush=True)
 
-        for i, word in enumerate(search_space):
-            info_score = get_word_information_score(word, self.possible_words)
-            entropy_score = calculate_entropy(word, self.possible_words)
-            # Balance both scores
-            combined_score = info_score + entropy_score
-            word_scores.append((word, combined_score, info_score, entropy_score))
+        # Use parallel processing for large computations
+        if total_words_to_check > 50:  # Use parallel processing for 50+ words
+            # Prepare arguments for parallel processing
+            args_list = [(word, self.possible_words) for word in search_space]
 
-            # Print progress dots
-            if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
-                print(".", end="", flush=True)
+            # Use number of CPU cores, but cap at reasonable limit
+            num_processes = min(cpu_count(), max(2, total_words_to_check // 20))
 
-        # Finish progress line if we started one
-        if total_words_to_check > 100:
-            print(" done")
+            try:
+                with Pool(processes=num_processes) as pool:
+                    word_scores = pool.map(calculate_information_for_word, args_list)
 
-        # Find the best word
+                if total_words_to_check > 100:
+                    print(" done (parallel)")
+
+            except Exception as e:
+                # Fall back to sequential processing if parallel fails
+                print(f" (parallel failed: {e}, using sequential)")
+                word_scores = []
+                progress_interval = max(1, total_words_to_check // 10)
+
+                for i, word in enumerate(search_space):
+                    info_score = get_word_information_score(word, self.possible_words)
+                    entropy_score = calculate_entropy(word, self.possible_words)
+                    # Balance both scores
+                    combined_score = info_score + entropy_score
+                    word_scores.append((word, combined_score, info_score, entropy_score))
+
+                    # Print progress dots
+                    if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                        print(".", end="", flush=True)
+
+                if total_words_to_check > 100:
+                    print(" done")
+        else:
+            # Use sequential processing for smaller computations
+            progress_interval = max(1, total_words_to_check // 10)
+
+            for i, word in enumerate(search_space):
+                info_score = get_word_information_score(word, self.possible_words)
+                entropy_score = calculate_entropy(word, self.possible_words)
+                # Balance both scores
+                combined_score = info_score + entropy_score
+                word_scores.append((word, combined_score, info_score, entropy_score))
+
+                # Print progress dots
+                if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                    print(".", end="", flush=True)
+
+            # Finish progress line if we started one
+            if total_words_to_check > 100:
+                print(" done")        # Find the best word
         best_word, best_combined, best_info, best_entropy = max(word_scores, key=lambda x: x[1])
 
         print(f"    Best word: '{best_word}' with info score {best_info:.3f}, entropy {best_entropy:.3f} from possible words")
