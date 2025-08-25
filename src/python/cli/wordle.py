@@ -610,14 +610,19 @@ def main():
                 interactive_mode()
                 return
             elif choice == "2":
-                break  # Continue to automated testing below
+                automated_testing()
+                return
             else:
                 print("Please enter 1 or 2.")
         except KeyboardInterrupt:
             print("\nGoodbye!")
             return
 
-    # Original automated testing code
+def automated_testing():
+    """Run automated testing with user-selected word file."""
+    print("\n🤖 AUTOMATED TESTING MODE")
+    print("="*60)
+
     # Load word list from file
     word_list = load_words(os.path.join(DATA_DIR, "words_alpha5.txt"))
     if not word_list:
@@ -626,13 +631,36 @@ def main():
     else:
         print(f"Loaded {len(word_list)} words from file")
 
-    # Test each guessing method with multiple target words and start strategies
-    # Check for past Wordle words file first
-    past_words_file = os.path.join(DATA_DIR, "words_past5_date.txt")
-    past_words = load_words(past_words_file)
+    # Prompt user for which test word file to use
+    print("\nSelect which word file to test against:")
+    print("1. All past Wordle words (words_past5_date.txt)")
+    print("2. Failed/missing words (words_missing.txt)")
+    print("3. Challenging words (words_challenging.txt)")
 
-    if past_words:
-        print(f"Found past Wordle words file: {len(past_words)} words")
+    test_file_options = {
+        "1": ("words_past5_date.txt", "all past Wordle words"),
+        "2": ("words_missing.txt", "failed/missing words"),
+        "3": ("words_challenging.txt", "challenging words")
+    }
+
+    while True:
+        try:
+            file_choice = input("\nEnter your choice (1-3): ").strip()
+            if file_choice in test_file_options:
+                test_filename, description = test_file_options[file_choice]
+                break
+            else:
+                print("Please enter 1, 2, or 3.")
+        except KeyboardInterrupt:
+            print("\nGoodbye!")
+            return
+
+    # Load the selected test word file
+    test_words_file = os.path.join(DATA_DIR, test_filename)
+    test_words_from_file = load_words(test_words_file)
+
+    if test_words_from_file:
+        print(f"Found {description} file: {len(test_words_from_file)} words")
 
         # Prompt user for how many words to test
         while True:
@@ -640,19 +668,19 @@ def main():
                 user_input = input(f"How many words to test? (number, 'all', or Enter for default 10): ").strip().lower()
 
                 if not user_input:  # Empty input (just pressed Enter)
-                    num_words = 10
+                    num_words = min(10, len(test_words_from_file))
                     break
                 elif user_input == "all":
-                    num_words = len(past_words)
+                    num_words = len(test_words_from_file)
                     break
                 else:
                     num_words = int(user_input)
                     if num_words <= 0:
                         print("Please enter a positive number.")
                         continue
-                    elif num_words > len(past_words):
-                        print(f"Only {len(past_words)} words available. Using all {len(past_words)} words.")
-                        num_words = len(past_words)
+                    elif num_words > len(test_words_from_file):
+                        print(f"Only {len(test_words_from_file)} words available. Using all {len(test_words_from_file)} words.")
+                        num_words = len(test_words_from_file)
                     break
             except ValueError:
                 print("Please enter a valid number, 'all', or press Enter for default.")
@@ -660,10 +688,10 @@ def main():
                 print("\nGoodbye!")
                 return
 
-        test_words = past_words[:num_words]
-        print(f"Using {len(test_words)} past Wordle words for testing: {[w.upper() for w in test_words]}")
+        test_words = test_words_from_file[:num_words]
+        print(f"Using {len(test_words)} {description}: {[w.upper() for w in test_words]}")
     else:
-        print("Past Wordle words file not found, using default test words")
+        print(f"{description.capitalize()} file not found, using default test words")
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 

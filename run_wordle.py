@@ -27,8 +27,8 @@ def main():
         from src.python.cli.wordle import interactive_mode
         interactive_mode()
     elif choice == "2":
-        from src.python.cli.wordle import main as test_mode
-        test_mode()
+        from src.python.cli.wordle import automated_testing
+        automated_testing()
     elif choice == "3":
         from src.python.analysis.find_best_entropy import main as entropy_analysis
         entropy_analysis()
