@@ -1,0 +1,53 @@
+#----------------
+# Compiled files
+#----------------
+
+# Compiled Object files
+**/obj
+*.o
+*.obj
+
+# Fortran module files
+**/mod
+*.mod
+
+# Executables
+**/bin
+*.exe
+*.out
+*.x
+*.xc
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+#----------------
+# Backups
+#----------------
+
+# Emacs
+*~
+\#*#
+
+# Fortran I/O files
+fort.?
+
+# Git
+*.~*~
+*.*~Stashed*
+
+#----------------
+# programs output
+#----------------
+
+# logs
+solver_state_after_6_*.txt
+
+#----------------
+# word lists
+#----------------
+data/*.txt
+data/*.csv
+data/*.xls*
