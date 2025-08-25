@@ -542,6 +542,9 @@ def main():
     methods = ["random", "entropy", "frequency"]
     start_strategies = ["crane", "random", "highest", "lowest"]
 
+    # Track results for summary
+    results = {}
+
     for target in test_words:
         print(f"\n{'='*80}")
         print(f"Testing target word: {target.upper()}")
@@ -559,12 +562,24 @@ def main():
                 solved, attempts = solver.solve(target, guess_method=method)
                 print(format_result(solved, attempts))
 
+                # Track results
+                key = f"{method}"
+                if key not in results:
+                    results[key] = []
+                results[key].append((solved, attempts))
+
             elif method == "entropy":
                 # Entropy method: only test crane start (highest is too slow)
-                print(f"\nTesting {method} method (crane start):")
+                print(f"\nTesting {method} method (hard-coded start):")
                 solver = WordleSolver(word_list)
                 solved, attempts = solver.solve(target, guess_method=method, start_strategy="crane")
                 print(format_result(solved, attempts))
+
+                # Track results
+                key = f"{method} (crane)"
+                if key not in results:
+                    results[key] = []
+                results[key].append((solved, attempts))
 
             else:  # frequency method
                 # Frequency method: test all start strategies
@@ -573,6 +588,59 @@ def main():
                     solver = WordleSolver(word_list)
                     solved, attempts = solver.solve(target, guess_method=method, start_strategy=strategy)
                     print(format_result(solved, attempts))
+
+                    # Track results
+                    key = f"{method} ({strategy})"
+                    if key not in results:
+                        results[key] = []
+                    results[key].append((solved, attempts))
+
+    # Print summary of results
+    print(f"\n{'='*80}")
+    print("📊 PERFORMANCE SUMMARY")
+    print(f"{'='*80}")
+    print(f"Tested {len(test_words)} words: {[w.upper() for w in test_words]}")
+    print()
+
+    # Calculate and display statistics for each method
+    for method_key in sorted(results.keys()):
+        method_results = results[method_key]
+        total_tests = len(method_results)
+        successful_solves = sum(1 for solved, _ in method_results if solved)
+        failed_solves = total_tests - successful_solves
+
+        if successful_solves > 0:
+            successful_attempts = [attempts for solved, attempts in method_results if solved]
+            avg_attempts = sum(successful_attempts) / len(successful_attempts)
+            min_attempts = min(successful_attempts)
+            max_attempts = max(successful_attempts)
+        else:
+            avg_attempts = 0
+            min_attempts = 0
+            max_attempts = 0
+
+        # Color code the method name based on overall performance
+        if successful_solves == total_tests and avg_attempts <= 4:
+            color = Colors.GREEN
+        elif successful_solves == total_tests and avg_attempts <= 6:
+            color = Colors.YELLOW
+        else:
+            color = Colors.RED
+
+        print(f"{color}{method_key:20}{Colors.RESET} | ", end="")
+        print(f"Success: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ", end="")
+
+        if successful_solves > 0:
+            avg_color = Colors.GREEN if avg_attempts <= 4 else Colors.YELLOW if avg_attempts <= 6 else Colors.RED
+            print(f"Avg: {avg_color}{avg_attempts:4.1f}{Colors.RESET} | ", end="")
+            print(f"Range: {min_attempts}-{max_attempts}")
+        else:
+            print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A")
+
+    print(f"\n{Colors.GREEN}Legend:{Colors.RESET}")
+    print(f"  {Colors.GREEN}Green{Colors.RESET}: Excellent performance (100% success, avg ≤ 4 guesses)")
+    print(f"  {Colors.YELLOW}Yellow{Colors.RESET}: Good performance (100% success, avg ≤ 6 guesses)")
+    print(f"  {Colors.RED}Red{Colors.RESET}: Poor performance (failures or avg > 6 guesses)")
 
 if __name__ == "__main__":
     main()
