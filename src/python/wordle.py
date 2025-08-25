@@ -102,7 +102,14 @@ class WordleSolver:
 
         word_entropies = []
 
-        for guess in search_space:
+        # Add progress indicator for long computations
+        total_words_to_check = len(search_space)
+        progress_interval = max(1, total_words_to_check // 10)  # Print dot every 10%
+
+        if total_words_to_check > 100:  # Only show progress for longer computations
+            print(f"    Computing entropy for {total_words_to_check} words: ", end="", flush=True)
+
+        for i, guess in enumerate(search_space):
             pattern_counts = Counter()
             for possible_target in self.possible_words:
                 feedback = get_feedback(guess, possible_target)
@@ -115,6 +122,14 @@ class WordleSolver:
                 entropy -= probability * math.log2(probability) if probability > 0 else 0
 
             word_entropies.append((guess, entropy))
+
+            # Print progress dots
+            if total_words_to_check > 100 and (i + 1) % progress_interval == 0:
+                print(".", end="", flush=True)
+
+        # Finish progress line if we started one
+        if total_words_to_check > 100:
+            print(" done")
 
         # Find the maximum entropy
         max_entropy = max(entropy for _, entropy in word_entropies)
@@ -532,8 +547,35 @@ def main():
 
     if past_words:
         print(f"Found past Wordle words file: {len(past_words)} words")
-        test_words = past_words[:10]  # Use first 10 past words for testing
-        print(f"Using first 10 past Wordle words for testing: {[w.upper() for w in test_words]}")
+
+        # Prompt user for how many words to test
+        while True:
+            try:
+                user_input = input(f"How many words to test? (number, 'all', or Enter for default 10): ").strip().lower()
+
+                if not user_input:  # Empty input (just pressed Enter)
+                    num_words = 10
+                    break
+                elif user_input == "all":
+                    num_words = len(past_words)
+                    break
+                else:
+                    num_words = int(user_input)
+                    if num_words <= 0:
+                        print("Please enter a positive number.")
+                        continue
+                    elif num_words > len(past_words):
+                        print(f"Only {len(past_words)} words available. Using all {len(past_words)} words.")
+                        num_words = len(past_words)
+                    break
+            except ValueError:
+                print("Please enter a valid number, 'all', or press Enter for default.")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                return
+
+        test_words = past_words[:num_words]
+        print(f"Using {len(test_words)} past Wordle words for testing: {[w.upper() for w in test_words]}")
     else:
         print("Past Wordle words file not found, using default test words")
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
