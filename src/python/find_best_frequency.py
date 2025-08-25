@@ -64,8 +64,8 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
     word_scores = []
 
     for i, word in enumerate(word_list):
-        if i % 1000 == 0 and len(word_list) > 1000:
-            print(f"Progress: {i}/{len(word_list)} words processed...")
+      #  if i % 1000 == 0 and len(word_list) > 1000:
+       #     print(f"Progress: {i}/{len(word_list)} words processed...")
 
         # OPTIMIZED: Simple arithmetic using pre-calculated frequencies
         freq_score = sum(freq[i][word[i]] for i in range(word_length))
@@ -99,6 +99,38 @@ def main():
         print("Error: Word file not found at /home/jlighthall/examp/common/words_alpha5.txt")
         return
     print(f"Loaded {len(word_list)} words from file")
+
+    # Find highest frequency words
+    print(f"\n{'='*80}")
+    print("HIGHEST FREQUENCY ANALYSIS (5-LETTER WORDS)")
+    print(f"{'='*80}")
+
+    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
+                                         unique_letters_only=False, wordle_appropriate_only=False)
+
+    print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
+    print(f"{'-'*55}")
+
+    for i, (word, freq_score, likelihood_score, entropy) in enumerate(top_words, 1):
+        print(f"{i:<4} {word:<8} {freq_score:<10} {likelihood_score:<12.4f} {entropy:<10.4f}")
+
+    print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
+
+    # Find highest frequency words (unique letters only)
+    print(f"\n{'='*80}")
+    print("HIGHEST FREQUENCY ANALYSIS (UNIQUE LETTERS)")
+    print(f"{'='*80}")
+
+    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
+                                         unique_letters_only=True, wordle_appropriate_only=False)
+
+    print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
+    print(f"{'-'*55}")
+
+    for i, (word, freq_score, likelihood_score, entropy) in enumerate(top_words, 1):
+        print(f"{i:<4} {word:<8} {freq_score:<10} {likelihood_score:<12.4f} {entropy:<10.4f}")
+
+    print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
 
     # Find highest frequency words (Wordle-appropriate, unique letters only)
     print(f"\n{'='*80}")
