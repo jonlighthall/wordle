@@ -7,6 +7,7 @@ A comprehensive Wordle analysis and solver suite written in Python and Fortran.
 ```
 wordle/
 ├── run_wordle.py          # Main entry point - run this from the repository root
+├── cleanup_word_files.py  # Word file cleanup utility - removes duplicates
 ├── bin/                   # Compiled executables
 │   ├── filter-list        # Fortran utility
 │   └── wordle             # Fortran Wordle solver
@@ -56,6 +57,13 @@ This will present you with a menu of options:
 3. **Find Best Entropy Words** - Analyze words by information entropy
 4. **Find Best Frequency Words** - Analyze words by letter frequency
 5. **Run Tests** - Execute the test suite
+
+### Utilities
+
+```bash
+# Clean word files (remove duplicates)
+python3 cleanup_word_files.py
+```
 
 ### Running Individual Components
 

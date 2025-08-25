@@ -19,9 +19,10 @@ def main():
     print("3. Find Best Entropy Words")
     print("4. Find Best Frequency Words")
     print("5. Run Tests")
+    print("6. Clean Word Files (remove duplicates)")
     print("="*50)
 
-    choice = input("Select an option (1-5): ").strip()
+    choice = input("Select an option (1-6): ").strip()
 
     if choice == "1":
         from src.python.cli.wordle import interactive_mode
@@ -44,8 +45,12 @@ def main():
         test_feedback_input()
         test_word_removal()
         test_attempt_counting()
+    elif choice == "6":
+        # Import and run the cleanup script
+        import subprocess
+        subprocess.run([sys.executable, "cleanup_word_files.py"])
     else:
-        print("Invalid choice. Please select 1-5.")
+        print("Invalid choice. Please select 1-6.")
 
 if __name__ == "__main__":
     main()
