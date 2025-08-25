@@ -609,6 +609,9 @@ def main():
         successful_solves = sum(1 for solved, _ in method_results if solved)
         failed_solves = total_tests - successful_solves
 
+        # Count attempts that exceeded 6 guesses (Wordle limit)
+        exceeded_limit = sum(1 for solved, attempts in method_results if attempts > 6)
+
         if successful_solves > 0:
             successful_attempts = [attempts for solved, attempts in method_results if solved]
             avg_attempts = sum(successful_attempts) / len(successful_attempts)
@@ -633,9 +636,15 @@ def main():
         if successful_solves > 0:
             avg_color = Colors.GREEN if avg_attempts <= 4 else Colors.YELLOW if avg_attempts <= 6 else Colors.RED
             print(f"Avg: {avg_color}{avg_attempts:4.1f}{Colors.RESET} | ", end="")
-            print(f"Range: {min_attempts}-{max_attempts}")
+            print(f"Range: {min_attempts}-{max_attempts} | ", end="")
         else:
-            print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A")
+            print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A | ", end="")
+
+        # Display exceeded limit count with color coding
+        if exceeded_limit > 0:
+            print(f"Exceeded 6: {Colors.RED}{exceeded_limit}{Colors.RESET}")
+        else:
+            print(f"Exceeded 6: {Colors.GREEN}0{Colors.RESET}")
 
     print(f"\n{Colors.GREEN}Legend:{Colors.RESET}")
     print(f"  {Colors.GREEN}Green{Colors.RESET}: Excellent performance (100% success, avg ≤ 4 guesses)")
