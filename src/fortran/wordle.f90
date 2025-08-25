@@ -8,7 +8,7 @@ program wordle
   integer,dimension(wl,26) :: counts = 0
 
   ! read dictionary file of 5-letter words
-  open(newunit=read_unit,file='words_alpha5.txt',status='old',action='read')
+  open(newunit=read_unit,file='data/words_alpha5.txt',status='old',action='read')
   do
      read(read_unit,'(a)',iostat=ierr) line
      if (ierr.eq.0) then
@@ -35,7 +35,7 @@ program wordle
            max_count(i)=maxval(counts(i,:))
            max_let(i)=maxloc(counts(i,:),1)
            ! convert to ASCII
-           max_char(i)=max_let(i)+96           
+           max_char(i)=max_let(i)+96
            mode(i:i)=char(max_char(i))
            print '(1x,i5,1x,i3,1x,i5,1x,a)',max_count(i),max_let(i),max_char(i),mode(i:i)
         enddo
@@ -49,7 +49,7 @@ program wordle
 
   ! calcualte probability for each position
   ! the sum of each positions's probability should be the same
-  
+
   !then rewind and loop through the word list again
   ! assign each word a likelyhood probabilty based on the calculated probability fore each letter
   ! that is, sum the per-letter probability
@@ -59,6 +59,6 @@ program wordle
   ! recycle through the list matching letters and postions
   ! inputs 0,1,2
   ! eg 01120
-  
-  
+
+
 end program wordle
