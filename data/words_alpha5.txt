@@ -192,7 +192,6 @@ admit
 admix
 admov
 admrx
-adnex
 adobe
 adobo
 adolf
@@ -294,7 +293,6 @@ aglet
 aglow
 agmas
 agnat
-agnel
 agnes
 agnus
 agoge
@@ -1133,7 +1131,6 @@ awing
 awink
 awiwi
 awkly
-awned
 awner
 awoke
 awols
@@ -8305,7 +8302,6 @@ lynch
 linda
 lindy
 lindo
-linea
 lined
 liney
 linen
