@@ -1110,6 +1110,9 @@ def interactive_mode():
             # Exit gracefully to "Thanks for playing!" message
             return
 
+    # Track if user interrupted with Ctrl+C to skip "play again" prompt
+    interrupted = False
+
     if target_choice == "1":
         # User provides target word
         while True:
@@ -1133,7 +1136,7 @@ def interactive_mode():
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
             print("Thanks for playing! 🎯")
-            return
+            interrupted = True
 
     elif target_choice == "2":
         # Random target word
@@ -1147,7 +1150,7 @@ def interactive_mode():
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
             print("Thanks for playing! 🎯")
-            return
+            interrupted = True
 
     else:
         # Manual feedback mode (real Wordle)
@@ -1165,15 +1168,17 @@ def interactive_mode():
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
             print("Thanks for playing! 🎯")
-            return
+            interrupted = True
 
-    # Ask if user wants to play again
-    print(f"\nWould you like to play again? (y/n): ", end="")
-    try:
-        if input().strip().lower().startswith('y'):
-            interactive_mode()
-    except KeyboardInterrupt:
-        pass
+    # Skip "play again" prompt if user interrupted with Ctrl+C
+    if not interrupted:
+        # Ask if user wants to play again
+        print(f"\nWould you like to play again? (y/n): ", end="")
+        try:
+            if input().strip().lower().startswith('y'):
+                interactive_mode()
+        except KeyboardInterrupt:
+            pass
 
     print("Thanks for playing! 🎯")
 
@@ -1416,19 +1421,19 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                         updated_word_list = remove_word_from_list(first_solver.word_list, chosen_word)
                         updated_possible_words = remove_word_from_list(first_solver.possible_words, chosen_word)
                         print(f"    Word lists updated: {len(updated_word_list)} total words, {len(updated_possible_words)} possible words")
-                        
+
                         # Apply the same updated lists to all solvers
                         for solver in solvers.values():
                             solver.word_list = updated_word_list.copy()
                             solver.possible_words = updated_possible_words.copy()
-                        
+
                         # Save updated word list to file if we have a file path
                         if first_solver.word_file_path:
                             if save_words_to_file(first_solver.word_file_path, updated_word_list):
                                 print(f"    Updated word list saved to {first_solver.word_file_path}")
                             else:
                                 print(f"    Warning: Could not save updated word list to {first_solver.word_file_path}")
-                        
+
                         print("🔄 Getting new suggestions...")
                         attempt -= 1  # Don't count rejected words
                         break
@@ -1459,7 +1464,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         # Filter the word list once and apply to all solvers for efficiency
         first_solver = list(solvers.values())[0]
         old_count = len(first_solver.possible_words)
-        
+
         # Perform filtering once
         filtered_words = [
             word for word in first_solver.possible_words
@@ -1467,7 +1472,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         ]
         new_count = len(filtered_words)
         print(f"    Filtered from {old_count} to {new_count} possible words")
-        
+
         # Apply the same filtered list and game state to all solvers
         for solver in solvers.values():
             solver.guesses.append(chosen_word)
