@@ -17,7 +17,8 @@ LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 # To change the default starting words, modify these constants:
 DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
 DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random fallback
-DEFAULT_STARTER = "crane"        # Used by ultra-efficient and some fallback cases
+DEFAULT_INFORMATION_STARTER = "adieu"   # Used by information algorithm (balances frequency and diversity)
+DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
 
 # ANSI color codes for terminal output
 class Colors:
@@ -78,9 +79,9 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
             "vowel_focus": "adieu"   # When expecting vowel-heavy targets
         },
         "information": {
-            "general": "slate",      # Best for hybrid information approach
-            "balanced": "cares",     # Good information + entropy balance
-            "precise": "stare"       # High precision for end-game
+            "general": DEFAULT_INFORMATION_STARTER,  # Best for hybrid information approach
+            "balanced": "cares",                     # Good information + entropy balance
+            "precise": "stare"                       # High precision for end-game
         },
         "smart_hybrid": {
             "general": DEFAULT_STARTER,      # Proven best all-around starter
@@ -996,9 +997,9 @@ class WordleSolver:
         return False, self.max_guesses
 
 def calculate_word_scores(word: str, possible_words: List[str], search_space: List[str]) -> dict:
-    """Calculate entropy and frequency scores for a word for display purposes."""
+    """Calculate entropy, frequency, and information scores for a word for display purposes."""
     if not possible_words:
-        return {'entropy': 0.0, 'frequency': 0, 'likelihood': 0.0}
+        return {'entropy': 0.0, 'frequency': 0, 'likelihood': 0.0, 'information': 0.0}
 
     # Calculate entropy score
     pattern_counts = Counter()
@@ -1021,10 +1022,14 @@ def calculate_word_scores(word: str, possible_words: List[str], search_space: Li
     freq_score = sum(freq[i][word[i]] for i in range(len(word)))
     likelihood_score = freq_score / len(search_space) if search_space else 0
 
+    # Calculate information score
+    info_score = get_word_information_score(word, possible_words)
+
     return {
         'entropy': entropy,
         'frequency': freq_score,
-        'likelihood': likelihood_score
+        'likelihood': likelihood_score,
+        'information': info_score
     }
 
 def interactive_mode():
@@ -1051,6 +1056,7 @@ def interactive_mode():
     algorithms = {
         'entropy': 'Entropy',
         'frequency': 'Frequency',
+        'information': 'Information',
         'ultra_efficient': 'Ultra-Efficient',
         'adaptive_hybrid': 'Adaptive-Hybrid'
     }
@@ -1156,13 +1162,15 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
             if not solver.possible_words:
                 suggestion = "No words left!"
-                scores = {'entropy': 0, 'frequency': 0, 'likelihood': 0}
+                scores = {'entropy': 0, 'frequency': 0, 'likelihood': 0, 'information': 0}
             else:
                 # Get suggestion based on algorithm
                 if alg_key == 'entropy':
                     suggestion = solver.choose_guess_entropy(False)
                 elif alg_key == 'frequency':
                     suggestion = solver.choose_guess_frequency(start_strategy="fixed")
+                elif alg_key == 'information':
+                    suggestion = solver.choose_guess_information(False)
                 elif alg_key == 'ultra_efficient':
                     suggestion = solver.choose_guess_ultra_efficient()
                 elif alg_key == 'adaptive_hybrid':
@@ -1188,8 +1196,8 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Display suggestions with scores
         print("🤖 Algorithm Suggestions:")
-        print(f"{'Choice':<8} {'Algorithm':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Left':<5}")
-        print("-" * 60)
+        print(f"{'Choice':<8} {'Algorithm':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
+        print("-" * 70)
 
         for i, (alg_key, data) in enumerate(suggestions.items(), 1):
             word = data['word']
@@ -1199,11 +1207,11 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
             print(f"{i}. {word.upper():<5} {name:<15} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
-                  f"{scores['likelihood']:<5.2f} {remaining:<5}")
+                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {remaining:<5}")
 
         # Get user choice
         print(f"\n📝 Options:")
-        print("• Enter 1-4 to use an algorithm's suggestion")
+        print("• Enter 1-5 to use an algorithm's suggestion")
         print("• Enter a 5-letter word to use your own guess")
 
         while True:
@@ -1211,7 +1219,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                 user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
 
                 # Check if it's a number (algorithm selection)
-                if user_input.isdigit() and 1 <= int(user_input) <= 4:
+                if user_input.isdigit() and 1 <= int(user_input) <= 5:
                     choice_idx = int(user_input) - 1
                     alg_key = list(suggestions.keys())[choice_idx]
                     chosen_word = suggestions[alg_key]['word']
@@ -1230,7 +1238,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     break
 
                 else:
-                    print("❌ Please enter 1-4 or a 5-letter word.")
+                    print("❌ Please enter 1-5 or a 5-letter word.")
 
             except KeyboardInterrupt:
                 print("\n\nGoodbye!")
@@ -1401,7 +1409,7 @@ def automated_testing():
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
-    algorithms = ["entropy", "frequency", "ultra_efficient", "adaptive_hybrid"]
+    algorithms = ["entropy", "frequency", "information", "ultra_efficient", "adaptive_hybrid"]
 
     # Track results for summary
     results = {}
