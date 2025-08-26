@@ -764,15 +764,15 @@ class WordleSolver:
             print(f"    Adaptive hybrid: {num_possible} words left, guessing directly")
             return self.possible_words[0]
 
-        # Define step-based weights based on actual performance data from 100-word analysis
-        # Data shows entropy dominates from step 2 onwards, with step 1 being essentially tied
+        # Define step-based weights based on actual performance data from multiple analyses
+        # Consolidated evidence shows entropy performs better from step 2 onwards
         step_weights = {
-            1: {'entropy': 0.5, 'frequency': 0.5},  # Essentially tied (96.4% vs 97.4%)
-            2: {'entropy': 0.7, 'frequency': 0.3},  # Entropy wins 92.7% vs 89.2%
-            3: {'entropy': 0.7, 'frequency': 0.3},  # Entropy wins 75.8% vs 72.1%
-            4: {'entropy': 0.6, 'frequency': 0.4},  # Entropy wins 63.1% vs 62.5% (closer)
-            5: {'entropy': 0.6, 'frequency': 0.4},  # Entropy wins 50.0% vs 45.5%
-            6: {'entropy': 0.6, 'frequency': 0.4},  # Extrapolated - favor proven entropy advantage
+            1: {'entropy': 0.5, 'frequency': 0.5},  # Consistently close, frequency slight edge
+            2: {'entropy': 0.7, 'frequency': 0.3},  # Entropy advantage appears consistently
+            3: {'entropy': 0.6, 'frequency': 0.4},  # Entropy maintains advantage
+            4: {'entropy': 0.6, 'frequency': 0.4},  # Entropy continues to lead
+            5: {'entropy': 0.7, 'frequency': 0.3},  # Entropy shows stronger advantage late game
+            6: {'entropy': 0.6, 'frequency': 0.4},  # Extrapolated based on entropy trend
         }
 
         current_step = attempt + 1
