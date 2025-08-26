@@ -17,7 +17,7 @@ LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 # To change the default starting words, modify these constants:
 DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
 DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random fallback
-DEFAULT_INFORMATION_STARTER = "adieu"   # Used by information algorithm (balances frequency and diversity)
+DEFAULT_INFORMATION_STARTER = "oghuz"  # Used by information algorithm (balances frequency and diversity)
 DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
 
 # Popular Wordle starting words that users often choose
@@ -1037,9 +1037,14 @@ def get_valid_popular_words(possible_words: List[str], guessed_words: List[str])
     """Get popular words that are still valid and haven't been guessed yet."""
     valid_popular = []
 
+    # Convert all to lowercase for comparison
+    guessed_words_lower = [word.lower() for word in guessed_words]
+
     for word in POPULAR_WORDS:
-        # Skip if already guessed
-        if word in guessed_words:
+        word_lower = word.lower()
+
+        # Skip if already guessed or suggested
+        if word_lower in guessed_words_lower:
             continue
 
         # Check if word is still possible based on current game state
@@ -1172,6 +1177,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Get suggestions from all algorithms
         suggestions = {}
+        word_to_algorithms = {}  # Track which algorithms suggest each word
 
         for alg_key, alg_name in algorithms.items():
             solver = solvers[alg_key]
@@ -1210,35 +1216,91 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                 'remaining': len(solver.possible_words)
             }
 
+            # Track word-to-algorithm mapping for duplicate detection
+            if suggestion != "No words left!":
+                word_lower = suggestion.lower()
+                if word_lower not in word_to_algorithms:
+                    word_to_algorithms[word_lower] = []
+                word_to_algorithms[word_lower].append((alg_key, alg_name))
+
+        # Handle duplicates by finding alternative suggestions for conflicted algorithms
+        unique_suggestions = {}
+        used_words = set()
+
+        for alg_key, data in suggestions.items():
+            word = data['word']
+            word_lower = word.lower()
+
+            if word == "No words left!":
+                unique_suggestions[alg_key] = data
+            elif word_lower not in used_words:
+                # First algorithm to suggest this word - keep it with original algorithm name
+                unique_suggestions[alg_key] = data
+                used_words.add(word_lower)
+            else:
+                # This word is already used - find the next best suggestion for this algorithm
+                solver = solvers[alg_key]
+                alternative_found = False
+
+                if solver.possible_words:
+                    # Simple approach: find available words not already used
+                    available_words = [w for w in solver.possible_words if w.lower() not in used_words]
+                    if available_words:
+                        # Take the first available word as alternative
+                        alternative_word = available_words[0]
+                        search_space = solver.possible_words.copy()
+                        if should_prefer_isograms(solver.possible_words, len(solver.guesses)):
+                            isogram_space = solver.filter_words_unique_letters(search_space)
+                            if isogram_space:
+                                search_space = isogram_space
+                        alt_scores = calculate_word_scores(alternative_word, solver.possible_words, search_space)
+                        unique_suggestions[alg_key] = {
+                            'word': alternative_word,
+                            'name': data['name'],
+                            'scores': alt_scores,
+                            'remaining': len(solver.possible_words)
+                        }
+                        used_words.add(alternative_word.lower())
+                        alternative_found = True
+
+                if not alternative_found:
+                    # Fallback: mark as no unique suggestion available
+                    unique_suggestions[alg_key] = {
+                        'word': f"(duplicate)",
+                        'name': data['name'],
+                        'scores': {'entropy': 0, 'frequency': 0, 'likelihood': 0, 'information': 0},
+                        'remaining': len(solver.possible_words) if solver.possible_words else 0
+                    }
+
         # Display suggestions with scores
         print("🤖 Algorithm Suggestions:")
-        print(f"{'Choice':<8} {'Algorithm':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
-        print("-" * 70)
+        print(f"{'Choice':<9} {'Algorithm':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
+        print("-" * 71)
 
-        for i, (alg_key, data) in enumerate(suggestions.items(), 1):
+        for i, (alg_key, data) in enumerate(unique_suggestions.items(), 1):
             word = data['word']
             name = data['name']
             scores = data['scores']
             remaining = data['remaining']
 
-            print(f"{i}. {word.upper():<5} {name:<15} "
+            print(f"{i:2d}. {word.upper():<5} {name:<15} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                   f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {remaining:<5}")
 
         # Get valid popular words (excluding already suggested algorithm words and previously guessed words)
         solver_ref = list(solvers.values())[0]  # Use first solver as reference for game state
         guessed_words = solver_ref.guesses if hasattr(solver_ref, 'guesses') else []
-        algorithm_words = [data['word'].lower() for data in suggestions.values() if data['word'] != "No words left!"]
+        algorithm_words = [data['word'].lower() for data in unique_suggestions.values() if data['word'] not in ["No words left!", "(duplicate)"]]
 
         valid_popular = get_valid_popular_words(solver_ref.possible_words, guessed_words + algorithm_words)
 
         # Display popular words if any are available
         if valid_popular:
             print(f"\n🌟 Popular Words (still valid):")
-            print(f"{'Choice':<8} {'Word':<8} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
-            print("-" * 70)
+            print(f"{'Choice':<9} {'Word':<8} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
+            print("-" * 71)
 
-            choice_offset = len(suggestions)
+            choice_offset = len(unique_suggestions)
             for i, word in enumerate(valid_popular):
                 # Calculate scores for this popular word
                 search_space = solver_ref.possible_words.copy()
@@ -1249,14 +1311,14 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                 scores = calculate_word_scores(word, solver_ref.possible_words, search_space)
 
-                print(f"{choice_offset + i + 1}. {word.upper():<5} {'Popular':<15} "
+                print(f"{choice_offset + i + 1:2d}. {word.upper():<5} {'Popular':<15} "
                       f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                       f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {len(solver_ref.possible_words):<5}")
 
             # Update total choices
-            total_choices = len(suggestions) + len(valid_popular)
+            total_choices = len(unique_suggestions) + len(valid_popular)
         else:
-            total_choices = len(suggestions)
+            total_choices = len(unique_suggestions)
 
         # Get user choice
         print(f"\n📝 Options:")
@@ -1272,20 +1334,20 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     choice_num = int(user_input)
 
                     # Check if it's an algorithm suggestion
-                    if choice_num <= len(suggestions):
+                    if choice_num <= len(unique_suggestions):
                         choice_idx = choice_num - 1
-                        alg_key = list(suggestions.keys())[choice_idx]
-                        chosen_word = suggestions[alg_key]['word']
-                        chosen_alg = suggestions[alg_key]['name']
-                        if chosen_word == "No words left!":
-                            print("❌ That algorithm has no suggestions available!")
+                        alg_key = list(unique_suggestions.keys())[choice_idx]
+                        chosen_word = unique_suggestions[alg_key]['word']
+                        chosen_alg = unique_suggestions[alg_key]['name']
+                        if chosen_word in ["No words left!", "(duplicate)"]:
+                            print("❌ That algorithm has no valid suggestions available!")
                             continue
                         print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
                         break
 
                     # It's a popular word selection
                     else:
-                        popular_idx = choice_num - len(suggestions) - 1
+                        popular_idx = choice_num - len(unique_suggestions) - 1
                         if popular_idx < len(valid_popular):
                             chosen_word = valid_popular[popular_idx]
                             chosen_alg = "Popular Word"
