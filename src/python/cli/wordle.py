@@ -44,78 +44,9 @@ def calculate_entropy_for_word(args):
 
     return (guess, entropy)
 
-def calculate_information_for_word(args):
-    """Helper function for parallel information score calculation.
 
-    Args:
-        args: Tuple of (guess_word, possible_words_list)
 
-    Returns:
-        Tuple of (guess_word, combined_score, info_score, entropy_score)
-    """
-    word, possible_words = args
 
-    # Calculate both metrics independently
-    info_score = get_word_information_score(word, possible_words)
-    entropy_score = calculate_entropy(word, possible_words)
-
-    # Use the appropriate metric based on game state (not double counting)
-    num_words = len(possible_words)
-
-    if num_words > 50:
-        # Early game: Entropy is superior for elimination
-        combined_score = entropy_score
-        method_used = "entropy"
-    elif num_words > 10:
-        # Mid game: Choose based on which score is higher
-        # This lets each metric compete fairly without double counting
-        if entropy_score > info_score:
-            combined_score = entropy_score
-            method_used = "entropy"
-        else:
-            combined_score = info_score
-            method_used = "information"
-    else:
-        # End game: Information score better for precision
-        combined_score = info_score
-        method_used = "information"
-
-    return (word, combined_score, info_score, entropy_score)
-
-def detect_word_patterns(possible_words: List[str]) -> dict:
-    """Detect common patterns in remaining words to optimize strategy."""
-    if not possible_words:
-        return {}
-
-    patterns = {
-        'common_prefixes': Counter(),
-        'common_suffixes': Counter(),
-        'repeated_letters': 0,
-        'vowel_positions': Counter(),
-        'consonant_clusters': Counter()
-    }
-
-    for word in possible_words:
-        # Prefixes and suffixes
-        if len(word) >= 2:
-            patterns['common_prefixes'][word[:2]] += 1
-            patterns['common_suffixes'][word[-2:]] += 1
-
-        # Repeated letters
-        if len(set(word)) < len(word):
-            patterns['repeated_letters'] += 1
-
-        # Vowel positions
-        for i, char in enumerate(word):
-            if char in 'aeiou':
-                patterns['vowel_positions'][i] += 1
-
-        # Common consonant clusters
-        for i in range(len(word) - 1):
-            if word[i] not in 'aeiou' and word[i+1] not in 'aeiou':
-                patterns['consonant_clusters'][word[i:i+2]] += 1
-
-    return patterns
 
 def get_universal_optimal_starter(method: str = "entropy", strategy: str = "general") -> str:
     """Get universal optimal starting words based on extensive pre-analysis.
@@ -154,26 +85,7 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
 
     return optimal_starters.get(method, {}).get(strategy, "crane")
 
-def get_adaptive_starter_by_context(context: str = "general") -> str:
-    """Get optimal starter based on game context/iteration.
 
-    This allows for varying starters based on different scenarios:
-    - Testing different word types
-    - Sequential games
-    - Known characteristics of target set
-    """
-
-    context_starters = {
-        "general": "tares",        # Best overall performance
-        "challenging": "roate",    # For known difficult words
-        "common_words": "arose",   # For everyday vocabulary
-        "past_wordles": "slate",   # Optimized for historical Wordle words
-        "missing_words": "lynch",  # For words that failed previous solvers
-        "vowel_heavy": "adieu",    # When targets likely have many vowels
-        "consonant_heavy": "lynch" # When targets likely consonant-heavy
-    }
-
-    return context_starters.get(context, "tares")
 
 def analyze_word_reduction(results_by_method: dict) -> dict:
     """Analyze word list reduction effectiveness for each method."""
@@ -686,64 +598,7 @@ class WordleSolver:
 
         return True
 
-    def choose_guess_pattern_aware(self) -> str:
-        """Pattern-aware method that uses word structure analysis for optimization."""
-        if not self.possible_words:
-            print("    No possible words left, using random from full list")
-            return random.choice(self.word_list)
 
-        num_possible = len(self.possible_words)
-        attempt = len(self.guesses)
-
-        # First guess: use proven optimal starter
-        if attempt == 0:
-            starter = get_universal_optimal_starter("smart_hybrid", "general")
-            print(f"    Pattern aware: using proven starter '{starter}'")
-            return starter
-
-        # Aggressive early termination
-        if num_possible <= 2:
-            print(f"    Pattern aware: {num_possible} words left, guessing directly")
-            return self.possible_words[0]
-
-        # Analyze remaining word patterns
-        patterns = detect_word_patterns(self.possible_words)
-
-        # Very aggressive termination if patterns suggest it
-        if attempt >= 3 and num_possible <= 6:
-            print(f"    Pattern aware: attempt {attempt+1}, {num_possible} words left, guessing directly")
-            return self.possible_words[0]
-        elif attempt >= 2 and num_possible <= 3:
-            print(f"    Pattern aware: attempt {attempt+1}, {num_possible} words left, guessing directly")
-            return self.possible_words[0]
-
-        # Pattern-based strategy selection
-        repeated_ratio = patterns.get('repeated_letters', 0) / num_possible if num_possible > 0 else 0
-
-        if num_possible > 15:
-            # Early game: use entropy for maximum elimination
-            print(f"    Pattern aware: {num_possible} words remaining, using entropy strategy")
-            return self.choose_guess_entropy(False)
-        elif repeated_ratio > 0.5 and num_possible > 6:
-            # Many words with repeated letters - use frequency approach
-            print(f"    Pattern aware: {num_possible} words with {repeated_ratio:.1%} repeated letters, using frequency strategy")
-            return self.choose_guess_frequency(start_strategy="fixed")
-        else:
-            # Mid-late game: prefer words from possible list for lucky guesses
-            print(f"    Pattern aware: {num_possible} words remaining, preferring possible words")
-            # Choose best entropy word from possible words only
-            best_word = None
-            best_entropy = -1
-
-            search_words = self.possible_words[:min(15, len(self.possible_words))]
-            for word in search_words:
-                entropy = calculate_entropy(word, self.possible_words)
-                if entropy > best_entropy:
-                    best_entropy = entropy
-                    best_word = word
-
-            print(f"    Best possible word: '{best_word}' with entropy {best_entropy:.3f}")
-            return best_word
 
     def choose_guess_ultra_efficient(self) -> str:
         """Ultra-efficient method that prioritizes speed over theoretical optimality."""
@@ -845,90 +700,9 @@ class WordleSolver:
             print(f"    Smart hybrid: {num_possible} words remaining, using frequency strategy")
             return self.choose_guess_frequency(start_strategy="fixed")
 
-    def choose_guess_smart_hybrid_adaptive(self, test_context: str = "general") -> str:
-        """Enhanced smart hybrid that can vary starting words based on context."""
-        if not self.possible_words:
-            print("    No possible words left, using random from full list")
-            return random.choice(self.word_list)
 
-        num_possible = len(self.possible_words)
-        attempt = len(self.guesses)
 
-        # First guess: use context-aware starting word
-        if attempt == 0:
-            # Vary starting word based on test context
-            optimal_start = get_adaptive_starter_by_context(test_context)
-            print(f"    Smart hybrid adaptive: using context '{test_context}' starter '{optimal_start}'")
-            return optimal_start
 
-        # Rest of the logic remains the same as smart_hybrid
-        direct_guess_threshold = max(2, 4 - attempt)
-        entropy_threshold = max(20, 80 - (attempt * 20))
-        info_threshold = max(6, 15 - (attempt * 3))
-
-        if num_possible <= direct_guess_threshold:
-            print(f"    Smart hybrid adaptive: {num_possible} words left, guessing directly")
-            return self.possible_words[0]
-
-        if num_possible > entropy_threshold:
-            print(f"    Smart hybrid adaptive: {num_possible} words remaining, using entropy strategy")
-            return self.choose_guess_entropy(False)
-        elif num_possible > info_threshold:
-            print(f"    Smart hybrid adaptive: {num_possible} words remaining, using information strategy")
-            return self.choose_guess_information(False)
-        else:
-            print(f"    Smart hybrid adaptive: {num_possible} words remaining, using frequency strategy")
-            return self.choose_guess_frequency(start_strategy="fixed")
-
-    def solve_automated_with_context(self, target: str, guess_method: str = "smart_hybrid_adaptive", test_context: str = "general") -> dict:
-        """Solve with context-aware starting words for testing variation."""
-        self.possible_words = self.word_list.copy()
-        self.guesses = []
-        self.feedbacks = []
-
-        # Track word list sizes after each guess
-        word_list_sizes = [len(self.possible_words)]
-
-        # Select the guessing method with context awareness
-        if guess_method == "smart_hybrid_adaptive":
-            choose_func = lambda: self.choose_guess_smart_hybrid_adaptive(test_context)
-        else:
-            # Fall back to regular methods
-            return self.solve_automated(target, guess_method, "fixed")
-
-        solved = False
-        attempts = 0
-
-        for attempt in range(self.max_guesses):
-            guess = choose_func()
-            if not guess:
-                break
-
-            feedback = get_feedback(guess, target)
-            self.guesses.append(guess)
-            self.feedbacks.append(feedback)
-            attempts = attempt + 1
-
-            if feedback == 'G' * self.word_length:
-                solved = True
-                break
-
-            self.filter_words(guess, feedback)
-            word_list_sizes.append(len(self.possible_words))
-
-            # Log solver state if we just completed the 6th guess without solving
-            if attempt + 1 == 6 and feedback != 'G' * self.word_length:
-                write_solver_state_after_6(target, guess_method, test_context, self.possible_words)
-
-        return {
-            'solved': solved,
-            'attempts': attempts,
-            'word_list_sizes': word_list_sizes,
-            'guesses': self.guesses.copy(),
-            'feedbacks': self.feedbacks.copy(),
-            'method': guess_method,
-            'strategy': test_context
-        }
 
     def solve_automated(self, target: str, guess_method: str = "random", start_strategy: str = "fixed") -> dict:
         """Solve with detailed tracking for automated analysis.
