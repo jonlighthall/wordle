@@ -49,10 +49,10 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
     # This is more efficient than using a set and list
     normalized_words = [word.lower().strip() for word in words if word.strip()]
     deduplicated_words = list(dict.fromkeys(word for word in normalized_words if word))
-    
+
     # Check if words were already sorted
     was_sorted = deduplicated_words == sorted(deduplicated_words)
-    
+
     # Sort the words alphabetically
     cleaned_words = sorted(deduplicated_words)
 
