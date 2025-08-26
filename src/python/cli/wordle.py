@@ -13,6 +13,12 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 
 DATA_DIR = os.path.join(REPO_ROOT, 'data')
 LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 
+# Default starting words for algorithms
+# To change the default starting words, modify these constants:
+DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
+DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random fallback
+DEFAULT_STARTER = "crane"        # Used by ultra-efficient and some fallback cases
+
 # ANSI color codes for terminal output
 class Colors:
     RED = '\033[91m'
@@ -60,13 +66,13 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
 
     optimal_starters = {
         "entropy": {
-            "general": "tares",      # Best overall entropy and proven track record
+            "general": DEFAULT_ENTROPY_STARTER,      # Best overall entropy and proven track record
             "aggressive": "slate",   # Maximum elimination for difficult words
             "balanced": "adieu",     # Good balance covering vowels
-            "conservative": "crane"  # Current best performing starter
+            "conservative": DEFAULT_FREQUENCY_STARTER  # Current best performing starter
         },
         "frequency": {
-            "general": "roate",      # Best frequency-based performance
+            "general": DEFAULT_FREQUENCY_STARTER,      # Best frequency-based performance
             "common": "cares",       # Focus on most common letters
             "balanced": "arose",     # Balance of frequency and position
             "vowel_focus": "adieu"   # When expecting vowel-heavy targets
@@ -77,13 +83,13 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
             "precise": "stare"       # High precision for end-game
         },
         "smart_hybrid": {
-            "general": "crane",      # Proven best all-around starter
+            "general": DEFAULT_STARTER,      # Proven best all-around starter
             "challenging": "slate",  # For difficult word sets
             "balanced": "adieu"      # Vowel coverage for diverse targets
         }
     }
 
-    return optimal_starters.get(method, {}).get(strategy, "crane")
+    return optimal_starters.get(method, {}).get(strategy, DEFAULT_STARTER)
 
 
 
@@ -344,7 +350,7 @@ class WordleSolver:
                 return random.choice(isogram_candidates)
 
         if len(self.guesses) == 0:
-            return "roate"  # Better first guess than crane
+            return DEFAULT_FREQUENCY_STARTER
         return random.choice(self.possible_words)
 
     def choose_guess_entropy(self, use_optimal_start: bool = False) -> str:
@@ -489,7 +495,7 @@ class WordleSolver:
         # Handle first guess with different strategies
         if len(self.guesses) == 0:
             if start_strategy == "fixed":
-                return "roate"  # Optimal frequency-based starting word (better than cares)
+                return DEFAULT_FREQUENCY_STARTER  # Optimal frequency-based starting word
             elif start_strategy == "random":
                 chosen = random.choice(self.word_list)
                 print(f"    Random first guess: '{chosen}'")
@@ -501,7 +507,7 @@ class WordleSolver:
                 print("    Computing lowest frequency-based first guess from full word list (unique letters only)...")
                 use_optimal_start = True  # Force optimal computation
             else:
-                return "crane"  # Default fallback
+                return DEFAULT_STARTER  # Default fallback
 
         # Calculate letter frequencies for each position (equivalent to likelihood matrix)
         search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
@@ -1225,7 +1231,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                 else:
                     print("❌ Please enter 1-4 or a 5-letter word.")
-                    
+
             except KeyboardInterrupt:
                 print("\n\nGoodbye!")
                 return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
@@ -1269,7 +1275,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                     else:
                         print("❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected.")
-                        
+
                 except KeyboardInterrupt:
                     print("\n\nGoodbye!")
                     return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
