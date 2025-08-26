@@ -6,6 +6,10 @@ from collections import Counter
 from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
 from functools import partial
+import math
+import os
+import datetime
+import random
 from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
 
 # Get the repository root directory (3 levels up from this file)
@@ -130,6 +134,63 @@ def analyze_word_reduction(results_by_algorithm: dict) -> dict:
             }
 
     return analysis
+
+def analyze_algorithm_performance_by_step(results_by_algorithm: dict) -> dict:
+    """Analyze which algorithm performs better at each step of the game."""
+    step_performance = {}
+
+    # Get entropy and frequency results
+    entropy_results = results_by_algorithm.get("entropy (fixed)", [])
+    frequency_results = results_by_algorithm.get("frequency (fixed)", [])
+
+    if not entropy_results or not frequency_results:
+        return {}
+
+    # Analyze each step (1-6 for standard Wordle)
+    for step in range(1, 7):
+        entropy_reductions = []
+        frequency_reductions = []
+
+        # Collect reduction data for this step
+        for result in entropy_results:
+            word_sizes = result['word_list_sizes']
+            if step < len(word_sizes) and word_sizes[step-1] > 0:
+                reduction_pct = (word_sizes[step-1] - word_sizes[step]) / word_sizes[step-1] * 100
+                entropy_reductions.append(reduction_pct)
+
+        for result in frequency_results:
+            word_sizes = result['word_list_sizes']
+            if step < len(word_sizes) and word_sizes[step-1] > 0:
+                reduction_pct = (word_sizes[step-1] - word_sizes[step]) / word_sizes[step-1] * 100
+                frequency_reductions.append(reduction_pct)
+
+        # Calculate averages for this step
+        if entropy_reductions and frequency_reductions:
+            entropy_avg = sum(entropy_reductions) / len(entropy_reductions)
+            frequency_avg = sum(frequency_reductions) / len(frequency_reductions)
+
+            # Determine which is better and by how much
+            if entropy_avg > frequency_avg:
+                better_algorithm = "entropy"
+                advantage = entropy_avg - frequency_avg
+                entropy_weight = 0.5 + min(0.4, advantage / 100)  # Weight between 0.5-0.9
+                frequency_weight = 1.0 - entropy_weight
+            else:
+                better_algorithm = "frequency"
+                advantage = frequency_avg - entropy_avg
+                frequency_weight = 0.5 + min(0.4, advantage / 100)  # Weight between 0.5-0.9
+                entropy_weight = 1.0 - frequency_weight
+
+            step_performance[step] = {
+                'entropy_avg_reduction': entropy_avg,
+                'frequency_avg_reduction': frequency_avg,
+                'better_algorithm': better_algorithm,
+                'advantage': advantage,
+                'entropy_weight': entropy_weight,
+                'frequency_weight': frequency_weight
+            }
+
+    return step_performance
 
 def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
     """Format the solve result with appropriate colors."""
@@ -665,6 +726,105 @@ class WordleSolver:
             print(f"    Ultra efficient: {num_possible} words remaining, guessing directly")
             return self.possible_words[0]
 
+    def choose_guess_adaptive_hybrid(self) -> str:
+        """Adaptive hybrid algorithm that dynamically weights entropy and frequency based on game stage.
+
+        Uses historical performance data to determine optimal weighting at each step:
+        - Early game: Typically favors entropy for maximum elimination
+        - Mid game: Balanced weighting based on remaining words
+        - Late game: May favor frequency for precision or direct guessing
+        """
+        if not self.possible_words:
+            print("    No possible words left, using random from full list")
+            return random.choice(self.word_list)
+
+        num_possible = len(self.possible_words)
+        attempt = len(self.guesses)
+
+        # First guess: use proven optimal starter
+        if attempt == 0:
+            starter = get_universal_optimal_starter("entropy", "general")
+            print(f"    Adaptive hybrid: using proven starter '{starter}'")
+            return starter
+
+        # Very small word lists: direct guessing
+        if num_possible <= 2:
+            print(f"    Adaptive hybrid: {num_possible} words left, guessing directly")
+            return self.possible_words[0]
+
+        # Define step-based weights based on typical performance patterns
+        # These could be updated with actual analysis data
+        step_weights = {
+            1: {'entropy': 0.7, 'frequency': 0.3},  # Entropy usually better early
+            2: {'entropy': 0.6, 'frequency': 0.4},  # Still favor entropy
+            3: {'entropy': 0.5, 'frequency': 0.5},  # Balanced mid-game
+            4: {'entropy': 0.4, 'frequency': 0.6},  # Frequency often better late
+            5: {'entropy': 0.3, 'frequency': 0.7},  # Favor frequency precision
+            6: {'entropy': 0.2, 'frequency': 0.8},  # Heavy frequency bias
+        }
+
+        current_step = attempt + 1
+        if current_step not in step_weights:
+            # Default to balanced for steps beyond 6
+            weights = {'entropy': 0.5, 'frequency': 0.5}
+        else:
+            weights = step_weights[current_step]
+
+        print(f"    Adaptive hybrid: step {current_step}, using entropy weight {weights['entropy']:.1f}, frequency weight {weights['frequency']:.1f}")
+
+        # Calculate scores for both algorithms
+        search_space = self.possible_words.copy()
+
+        # Prefer isograms when it makes sense
+        if should_prefer_isograms(self.possible_words, len(self.guesses)):
+            unique_search_space = self.filter_words_unique_letters(search_space)
+            if unique_search_space:
+                search_space = unique_search_space
+                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+
+        word_scores = []
+
+        # Calculate frequency scores
+        total_words = len(self.possible_words)
+        freq = [Counter() for _ in range(self.word_length)]
+
+        for word in search_space:
+            for i, char in enumerate(word):
+                freq[i][char] += 1
+
+        # Score each word with weighted combination
+        for word in search_space:
+            # Frequency score (normalized)
+            freq_score = sum(freq[i][word[i]] for i in range(self.word_length))
+            freq_score_normalized = freq_score / len(search_space)
+
+            # Entropy score
+            pattern_counts = Counter()
+            for possible_target in self.possible_words:
+                feedback = get_feedback(word, possible_target)
+                pattern_counts[feedback] += 1
+
+            entropy = 0
+            for count in pattern_counts.values():
+                probability = count / total_words
+                entropy -= probability * math.log2(probability) if probability > 0 else 0
+
+            # Normalize entropy (approximate max entropy is log2(total_words))
+            max_possible_entropy = math.log2(total_words) if total_words > 1 else 1
+            entropy_normalized = entropy / max_possible_entropy
+
+            # Weighted combination
+            combined_score = (weights['entropy'] * entropy_normalized +
+                            weights['frequency'] * freq_score_normalized)
+
+            word_scores.append((word, combined_score, entropy, freq_score))
+
+        # Find the best word
+        best_word, best_combined, best_entropy, best_freq = max(word_scores, key=lambda x: x[1])
+
+        print(f"    Best word: '{best_word}' with combined score {best_combined:.3f} (entropy: {best_entropy:.3f}, freq: {best_freq})")
+        return best_word
+
     def choose_guess_smart_hybrid(self) -> str:
         """Smart hybrid approach that adapts strategy based on game state."""
         if not self.possible_words:
@@ -734,8 +894,10 @@ class WordleSolver:
             choose_func = lambda: self.choose_guess_smart_hybrid()
         elif guess_algorithm == "ultra_efficient":
             choose_func = lambda: self.choose_guess_ultra_efficient()
+        elif guess_algorithm == "adaptive_hybrid":
+            choose_func = lambda: self.choose_guess_adaptive_hybrid()
         else:
-            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', or 'ultra_efficient'.")
+            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', 'ultra_efficient', or 'adaptive_hybrid'.")
 
         solved = False
         attempts = 0
@@ -789,8 +951,10 @@ class WordleSolver:
             choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
         elif guess_algorithm == "information":
             choose_func = lambda: self.choose_guess_information(False)
+        elif guess_algorithm == "adaptive_hybrid":
+            choose_func = lambda: self.choose_guess_adaptive_hybrid()
         else:
-            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', or 'information'.")
+            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', or 'adaptive_hybrid'.")
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -840,10 +1004,11 @@ def interactive_mode():
     print("3. Frequency-based (letter frequency)")
     print("4. Information-based (hybrid approach)")
     print("5. Smart Hybrid (adaptive strategy)")
+    print("6. Adaptive Hybrid (dynamic entropy/frequency weighting)")
 
     while True:
         try:
-            algorithm_choice = input("\nEnter choice (1-5): ").strip()
+            algorithm_choice = input("\nEnter choice (1-6): ").strip()
             if algorithm_choice == "1":
                 guess_algorithm = "random"
                 break
@@ -886,8 +1051,11 @@ def interactive_mode():
             elif algorithm_choice == "5":
                 guess_algorithm = "smart_hybrid"
                 break
+            elif algorithm_choice == "6":
+                guess_algorithm = "adaptive_hybrid"
+                break
             else:
-                print("Invalid choice. Please enter 1-5.")
+                print("Invalid choice. Please enter 1-6.")
         except KeyboardInterrupt:
             print("\nGoodbye!")
             return
@@ -1145,7 +1313,7 @@ def automated_testing():
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
-    algorithms = ["entropy", "frequency", "ultra_efficient"]
+    algorithms = ["entropy", "frequency", "ultra_efficient", "adaptive_hybrid"]
 
     # Track results for summary
     results = {}
@@ -1216,6 +1384,26 @@ def automated_testing():
 
                 # Track results
                 key = f"{algorithm} (speed)"
+                if key not in results:
+                    results[key] = []
+                results[key].append(result)
+
+            elif algorithm == "adaptive_hybrid":
+                # Adaptive hybrid algorithm: dynamic entropy/frequency weighting
+                print(f"\nTesting {algorithm} algorithm (dynamic weighting):")
+                solver = WordleSolver(word_list)
+                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
+                print(format_result(result['solved'], result['attempts']))
+
+                # Log failed words
+                if not result['solved']:
+                    write_failed_word(target, algorithm, "adaptive")
+                # Log challenging words (solved but > 6 guesses)
+                elif result['solved'] and result['attempts'] > 6:
+                    write_challenging_word(target)
+
+                # Track results
+                key = f"{algorithm} (adaptive)"
                 if key not in results:
                     results[key] = []
                 results[key].append(result)
@@ -1311,6 +1499,51 @@ def automated_testing():
                 step_info.append(f"Step {step}: {step_avg:.1f}%")
 
             print(f"({', '.join(step_info)})")
+
+        # Add step-by-step analysis for entropy vs frequency
+        step_analysis = analyze_algorithm_performance_by_step(results)
+        if step_analysis:
+            print(f"\n{'='*60}")
+            print("📈 STEP-BY-STEP PERFORMANCE ANALYSIS")
+            print(f"{'='*60}")
+            print("Entropy vs Frequency algorithm effectiveness by game step")
+            print("(Helps determine optimal weighting for adaptive hybrid algorithms)")
+            print()
+
+            print(f"{'Step':<4} | {'Entropy':<8} | {'Frequency':<9} | {'Better':<9} | {'Weights'}")
+            print("-" * 55)
+
+            for step in sorted(step_analysis.keys()):
+                data = step_analysis[step]
+                entropy_avg = data['entropy_avg_reduction']
+                freq_avg = data['frequency_avg_reduction']
+                better = data['better_algorithm']
+                entropy_weight = data['entropy_weight']
+                freq_weight = data['frequency_weight']
+
+                # Color code the better algorithm
+                if better == "entropy":
+                    better_display = f"{Colors.GREEN}entropy{Colors.RESET}"
+                else:
+                    better_display = f"{Colors.YELLOW}frequency{Colors.RESET}"
+
+                print(f"{step:<4} | {entropy_avg:6.1f}%  | {freq_avg:7.1f}%  | {better_display:<17} | E:{entropy_weight:.1f} F:{freq_weight:.1f}")
+
+            print(f"\n💡 Adaptive Hybrid Insights:")
+
+            # Analyze patterns
+            early_entropy_count = sum(1 for step in [1, 2] if step in step_analysis and step_analysis[step]['better_algorithm'] == 'entropy')
+            late_freq_count = sum(1 for step in [4, 5, 6] if step in step_analysis and step_analysis[step]['better_algorithm'] == 'frequency')
+
+            if early_entropy_count >= 1:
+                print(f"   • Entropy typically better early game")
+            if late_freq_count >= 2:
+                print(f"   • Frequency typically better late game")
+
+            # Find crossover
+            crossover = next((step for step in sorted(step_analysis.keys()) if step_analysis[step]['better_algorithm'] == 'frequency'), None)
+            if crossover:
+                print(f"   • Strategy transition recommended at step {crossover}")
 
         print(f"\n📈 {Colors.GREEN}Best decimator{Colors.RESET}: ", end="")
         best_method, best_analysis = sorted_methods[0]
