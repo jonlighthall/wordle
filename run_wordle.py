@@ -22,7 +22,11 @@ def main():
     print("6. Clean Word Files (remove duplicates)")
     print("="*50)
 
-    choice = input("Select an option (1-6) [default: 1]: ").strip()
+    try:
+        choice = input("Select an option (1-6) [default: 1]: ").strip()
+    except KeyboardInterrupt:
+        print("\nThanks for playing! 🎯")
+        return
 
     # Make option 1 the default if no input is provided
     if not choice:

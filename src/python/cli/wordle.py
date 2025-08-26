@@ -1105,7 +1105,7 @@ def interactive_mode():
             else:
                 print("Invalid choice. Please enter 1-3.")
         except KeyboardInterrupt:
-            print("\nGoodbye!")
+            # Exit gracefully to "Thanks for playing!" message
             return
 
     if target_choice == "1":
@@ -1126,7 +1126,12 @@ def interactive_mode():
         print(f"\n🎯 Target word: {target.upper()}")
         print("🤖 AI algorithms will suggest words at each step...\n")
 
-        play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
+        try:
+            play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
+        except KeyboardInterrupt:
+            # Exit immediately to "Thanks for playing!" message
+            print("Thanks for playing! 🎯")
+            return
 
     elif target_choice == "2":
         # Random target word
@@ -1134,9 +1139,13 @@ def interactive_mode():
         print(f"\n🎯 Random target word selected!")
         print("🤖 AI algorithms will suggest words at each step...\n")
 
-        result = play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
-
-        print(f"\n🎯 The target word was: {target.upper()}")
+        try:
+            result = play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
+            print(f"\n🎯 The target word was: {target.upper()}")
+        except KeyboardInterrupt:
+            # Exit immediately to "Thanks for playing!" message
+            print("Thanks for playing! 🎯")
+            return
 
     else:
         # Manual feedback mode (real Wordle)
@@ -1149,7 +1158,12 @@ def interactive_mode():
         print("🔄 Rejected words don't count toward your 6-guess limit!")
         print("="*60)
 
-        play_multi_algorithm_game(solvers, algorithms, None, mode="manual")
+        try:
+            play_multi_algorithm_game(solvers, algorithms, None, mode="manual")
+        except KeyboardInterrupt:
+            # Exit immediately to "Thanks for playing!" message
+            print("Thanks for playing! 🎯")
+            return
 
     # Ask if user wants to play again
     print(f"\nWould you like to play again? (y/n): ", end="")
@@ -1367,8 +1381,11 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     print(f"❌ Please enter 1-{total_choices} or a 5-letter word.")
 
             except KeyboardInterrupt:
-                print("\n\nGoodbye!")
-                return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
+                # Show solution if we're in automated mode with a target
+                if mode == "automated" and target:
+                    print(f"\n🎯 The target word was: {target.upper()}")
+                # Re-raise to be caught by interactive_mode for immediate exit
+                raise
 
         # Handle the guess based on mode
         if mode == "automated" and target:
