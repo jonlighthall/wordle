@@ -87,19 +87,19 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
 
 
 
-def analyze_word_reduction(results_by_method: dict) -> dict:
-    """Analyze word list reduction effectiveness for each method."""
+def analyze_word_reduction(results_by_algorithm: dict) -> dict:
+    """Analyze word list reduction effectiveness for each algorithm."""
     analysis = {}
 
-    for method_key, method_results in results_by_method.items():
-        if not method_results:
+    for algorithm_key, algorithm_results in results_by_algorithm.items():
+        if not algorithm_results:
             continue
 
         # Collect reduction statistics
         all_reductions = []
         step_reductions = {}  # Track reduction at each step number
 
-        for result in method_results:
+        for result in algorithm_results:
             word_sizes = result['word_list_sizes']
 
             # Calculate percentage reductions at each step
@@ -122,7 +122,7 @@ def analyze_word_reduction(results_by_method: dict) -> dict:
             for step, reductions in step_reductions.items():
                 avg_by_step[step] = sum(reductions) / len(reductions)
 
-            analysis[method_key] = {
+            analysis[algorithm_key] = {
                 'avg_reduction_per_step': avg_reduction,
                 'max_reduction_seen': max_reduction,
                 'avg_by_step': avg_by_step,
@@ -601,7 +601,14 @@ class WordleSolver:
 
 
     def choose_guess_ultra_efficient(self) -> str:
-        """Ultra-efficient method that prioritizes speed over theoretical optimality."""
+        """Ultra-efficient algorithm that prioritizes speed over theoretical optimality.
+
+        This algorithm combines multiple strategies:
+        - Uses entropy algorithm for maximum elimination when many words remain
+        - Uses frequency-based tie-breaking (inherited from entropy calculations)
+        - Employs aggressive early termination for speed
+        - Switches to direct guessing much earlier than pure entropy
+        """
         if not self.possible_words:
             print("    No possible words left, using random from full list")
             return random.choice(self.word_list)
@@ -704,7 +711,7 @@ class WordleSolver:
 
 
 
-    def solve_automated(self, target: str, guess_method: str = "random", start_strategy: str = "fixed") -> dict:
+    def solve_automated(self, target: str, guess_algorithm: str = "random", start_strategy: str = "fixed") -> dict:
         """Solve with detailed tracking for automated analysis.
         Returns dictionary with solving details including word list reduction tracking."""
         self.possible_words = self.word_list.copy()
@@ -714,21 +721,21 @@ class WordleSolver:
         # Track word list sizes after each guess
         word_list_sizes = [len(self.possible_words)]  # Initial size
 
-        # Select the guessing method
-        if guess_method == "random":
+        # Select the guessing algorithm
+        if guess_algorithm == "random":
             choose_func = lambda: self.choose_guess_random()
-        elif guess_method == "entropy":
+        elif guess_algorithm == "entropy":
             choose_func = lambda: self.choose_guess_entropy(False)
-        elif guess_method == "frequency":
+        elif guess_algorithm == "frequency":
             choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
-        elif guess_method == "information":
+        elif guess_algorithm == "information":
             choose_func = lambda: self.choose_guess_information(False)
-        elif guess_method == "smart_hybrid":
+        elif guess_algorithm == "smart_hybrid":
             choose_func = lambda: self.choose_guess_smart_hybrid()
-        elif guess_method == "ultra_efficient":
+        elif guess_algorithm == "ultra_efficient":
             choose_func = lambda: self.choose_guess_ultra_efficient()
         else:
-            raise ValueError("Invalid guess_method. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', or 'ultra_efficient'.")
+            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', or 'ultra_efficient'.")
 
         solved = False
         attempts = 0
@@ -752,7 +759,7 @@ class WordleSolver:
 
             # Log solver state if we just completed the 6th guess without solving
             if attempt + 1 == 6 and feedback != 'G' * self.word_length:
-                write_solver_state_after_6(target, guess_method, start_strategy, self.possible_words)
+                write_solver_state_after_6(target, guess_algorithm, start_strategy, self.possible_words)
 
         return {
             'solved': solved,
@@ -760,30 +767,30 @@ class WordleSolver:
             'word_list_sizes': word_list_sizes,
             'guesses': self.guesses.copy(),
             'feedbacks': self.feedbacks.copy(),
-            'method': guess_method,
+            'algorithm': guess_algorithm,
             'strategy': start_strategy
         }
 
-    def solve(self, target: str, guess_method: str = "random", start_strategy: str = "fixed") -> Tuple[bool, int]:
-        """Attempt to solve Wordle for the given target word using specified guess method.
-        guess_method: 'random', 'entropy', 'frequency', or 'information'.
-        start_strategy: For frequency method: 'fixed', 'random', 'highest', 'lowest'.
+    def solve(self, target: str, guess_algorithm: str = "random", start_strategy: str = "fixed") -> Tuple[bool, int]:
+        """Attempt to solve Wordle for the given target word using specified guess algorithm.
+        guess_algorithm: 'random', 'entropy', 'frequency', or 'information'.
+        start_strategy: For frequency algorithm: 'fixed', 'random', 'highest', 'lowest'.
         Returns (solved, number_of_guesses)."""
         self.possible_words = self.word_list.copy()
         self.guesses = []
         self.feedbacks = []
 
-        # Select the guessing method
-        if guess_method == "random":
+        # Select the guessing algorithm
+        if guess_algorithm == "random":
             choose_func = lambda: self.choose_guess_random()
-        elif guess_method == "entropy":
+        elif guess_algorithm == "entropy":
             choose_func = lambda: self.choose_guess_entropy(False)  # Never use optimal start for entropy
-        elif guess_method == "frequency":
+        elif guess_algorithm == "frequency":
             choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
-        elif guess_method == "information":
+        elif guess_algorithm == "information":
             choose_func = lambda: self.choose_guess_information(False)
         else:
-            raise ValueError("Invalid guess_method. Use 'random', 'entropy', 'frequency', or 'information'.")
+            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', or 'information'.")
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -794,10 +801,10 @@ class WordleSolver:
             self.guesses.append(guess)
             self.feedbacks.append(feedback)
 
-            method_desc = f"{guess_method}"
+            algorithm_desc = f"{guess_algorithm}"
             if attempt == 0 and start_strategy != "fixed":
-                method_desc += f" ({start_strategy} start)"
-            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Method: {method_desc})")
+                algorithm_desc += f" ({start_strategy} start)"
+            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Algorithm: {algorithm_desc})")
 
             if feedback == 'G' * self.word_length:
                 return True, attempt + 1
@@ -806,7 +813,7 @@ class WordleSolver:
 
             # Log solver state if we just completed the 6th guess without solving
             if attempt + 1 == 6 and feedback != 'G' * self.word_length:
-                write_solver_state_after_6(target, guess_method, start_strategy, self.possible_words)
+                write_solver_state_after_6(target, guess_algorithm, start_strategy, self.possible_words)
 
         return False, self.max_guesses
 
@@ -826,8 +833,8 @@ def interactive_mode():
     else:
         print(f"Loaded {len(word_list)} words from file")
 
-    # Choose solving method
-    print("\nChoose your AI assistant method:")
+    # Choose solving algorithm
+    print("\nChoose your AI assistant algorithm:")
     print("1. Random guesses")
     print("2. Entropy-based (information theory)")
     print("3. Frequency-based (letter frequency)")
@@ -836,16 +843,16 @@ def interactive_mode():
 
     while True:
         try:
-            method_choice = input("\nEnter choice (1-5): ").strip()
-            if method_choice == "1":
-                guess_method = "random"
+            algorithm_choice = input("\nEnter choice (1-5): ").strip()
+            if algorithm_choice == "1":
+                guess_algorithm = "random"
                 break
-            elif method_choice == "2":
-                guess_method = "entropy"
+            elif algorithm_choice == "2":
+                guess_algorithm = "entropy"
                 break
-            elif method_choice == "3":
-                guess_method = "frequency"
-                # Choose start strategy for frequency method
+            elif algorithm_choice == "3":
+                guess_algorithm = "frequency"
+                # Choose start strategy for frequency algorithm
                 print("\nChoose starting strategy:")
                 print("1. fixed (classic)")
                 print("2. random")
@@ -873,11 +880,11 @@ def interactive_mode():
                         print("\nGoodbye!")
                         return
                 break
-            elif method_choice == "4":
-                guess_method = "information"
+            elif algorithm_choice == "4":
+                guess_algorithm = "information"
                 break
-            elif method_choice == "5":
-                guess_method = "smart_hybrid"
+            elif algorithm_choice == "5":
+                guess_algorithm = "smart_hybrid"
                 break
             else:
                 print("Invalid choice. Please enter 1-5.")
@@ -886,13 +893,13 @@ def interactive_mode():
             return
 
     # Initialize solver
-    if guess_method == "frequency":
+    if guess_algorithm == "frequency":
         solver = WordleSolver(word_list, word_file_path=word_file_path)
     else:
         solver = WordleSolver(word_list, word_file_path=word_file_path)
-        start_strategy = "fixed"  # Default for non-frequency methods
+        start_strategy = "fixed"  # Default for non-frequency algorithms
 
-    print(f"\n🤖 Using {guess_method} method" + (f" with {start_strategy} start" if guess_method == "frequency" and start_strategy != "fixed" else ""))
+    print(f"\n🤖 Using {guess_algorithm} algorithm" + (f" with {start_strategy} start" if guess_algorithm == "frequency" and start_strategy != "fixed" else ""))
 
     # Choose target word mode
     print("\nHow do you want to set the target word?")
@@ -929,7 +936,7 @@ def interactive_mode():
         print(f"\n🎯 Target word: {target.upper()}")
         print("🤖 AI will solve this automatically...\n")
 
-        solved, attempts = solver.solve(target, guess_method=guess_method, start_strategy=start_strategy)
+        solved, attempts = solver.solve(target, guess_algorithm=guess_algorithm, start_strategy=start_strategy)
 
         if solved:
             print(f"\n🎉 Solved in {attempts} guesses!")
@@ -942,7 +949,7 @@ def interactive_mode():
         print(f"\n🎯 Random target word selected!")
         print("🤖 AI will solve this automatically...\n")
 
-        solved, attempts = solver.solve(target, guess_method=guess_method, start_strategy=start_strategy)
+        solved, attempts = solver.solve(target, guess_algorithm=guess_algorithm, start_strategy=start_strategy)
 
         print(f"\n🎯 The target word was: {target.upper()}")
         if solved:
@@ -965,9 +972,9 @@ def interactive_mode():
 
         while attempt < max_attempts:
             # Get AI suggestion
-            if guess_method == "random":
+            if guess_algorithm == "random":
                 suggestion = solver.choose_guess_random()
-            elif guess_method == "entropy":
+            elif guess_algorithm == "entropy":
                 suggestion = solver.choose_guess_entropy(False)
             else:  # frequency
                 suggestion = solver.choose_guess_frequency(start_strategy=start_strategy)
@@ -1138,7 +1145,7 @@ def automated_testing():
         test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
-    methods = ["entropy", "frequency", "ultra_efficient"]
+    algorithms = ["entropy", "frequency", "ultra_efficient"]
 
     # Track results for summary
     results = {}
@@ -1148,67 +1155,67 @@ def automated_testing():
         print(f"Testing target word: {target.upper()}")
         print(f"{'='*80}")
 
-        for method in methods:
+        for algorithm in algorithms:
             print(f"\n{'-'*60}")
-            print(f"Method: {method.upper()}")
+            print(f"Algorithm: {algorithm.upper()}")
             print(f"{'-'*60}")
 
-            if method == "entropy":
-                # Entropy method: only test fixed start
-                print(f"\nTesting {method} method (fixed start):")
+            if algorithm == "entropy":
+                # Entropy algorithm: only test fixed start
+                print(f"\nTesting {algorithm} algorithm (fixed start):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_method=method, start_strategy="fixed")
+                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
                 print(format_result(result['solved'], result['attempts']))
 
                 # Log failed words
                 if not result['solved']:
-                    write_failed_word(target, method, "fixed")
+                    write_failed_word(target, algorithm, "fixed")
                 # Log challenging words (solved but > 6 guesses)
                 elif result['solved'] and result['attempts'] > 6:
                     write_challenging_word(target)
 
                 # Track results
-                key = f"{method} (fixed)"
+                key = f"{algorithm} (fixed)"
                 if key not in results:
                     results[key] = []
                 results[key].append(result)
 
-            elif method == "frequency":
-                # Frequency method: only test fixed start
-                print(f"\nTesting {method} method (fixed start):")
+            elif algorithm == "frequency":
+                # Frequency algorithm: only test fixed start
+                print(f"\nTesting {algorithm} algorithm (fixed start):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_method=method, start_strategy="fixed")
+                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
                 print(format_result(result['solved'], result['attempts']))
 
                 # Log failed words
                 if not result['solved']:
-                    write_failed_word(target, method, "fixed")
+                    write_failed_word(target, algorithm, "fixed")
                 # Log challenging words (solved but > 6 guesses)
                 elif result['solved'] and result['attempts'] > 6:
                     write_challenging_word(target)
 
                 # Track results
-                key = f"{method} (fixed)"
+                key = f"{algorithm} (fixed)"
                 if key not in results:
                     results[key] = []
                 results[key].append(result)
 
-            elif method == "ultra_efficient":
-                # Ultra efficient method: speed optimized
-                print(f"\nTesting {method} method (speed optimized):")
+            elif algorithm == "ultra_efficient":
+                # Ultra efficient algorithm: speed optimized
+                print(f"\nTesting {algorithm} algorithm (speed optimized):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_method=method, start_strategy="fixed")
+                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
                 print(format_result(result['solved'], result['attempts']))
 
                 # Log failed words
                 if not result['solved']:
-                    write_failed_word(target, method, "speed")
+                    write_failed_word(target, algorithm, "speed")
                 # Log challenging words (solved but > 6 guesses)
                 elif result['solved'] and result['attempts'] > 6:
                     write_challenging_word(target)
 
                 # Track results
-                key = f"{method} (speed)"
+                key = f"{algorithm} (speed)"
                 if key not in results:
                     results[key] = []
                 results[key].append(result)
@@ -1223,19 +1230,19 @@ def automated_testing():
     # Analyze word reduction effectiveness
     reduction_analysis = analyze_word_reduction(results)
 
-    # Calculate and display statistics for each method
-    for method_key in sorted(results.keys()):
-        method_results = results[method_key]
-        total_tests = len(method_results)
-        successful_solves = sum(1 for result in method_results if result['solved'])
+    # Calculate and display statistics for each algorithm
+    for algorithm_key in sorted(results.keys()):
+        algorithm_results = results[algorithm_key]
+        total_tests = len(algorithm_results)
+        successful_solves = sum(1 for result in algorithm_results if result['solved'])
         failed_solves = total_tests - successful_solves
 
         # Count wins (solved within 6 guesses) and losses (exceeded 6 guesses or failed)
-        wins = sum(1 for result in method_results if result['solved'] and result['attempts'] <= 6)
-        exceeded_limit = sum(1 for result in method_results if result['attempts'] > 6)
+        wins = sum(1 for result in algorithm_results if result['solved'] and result['attempts'] <= 6)
+        exceeded_limit = sum(1 for result in algorithm_results if result['attempts'] > 6)
 
         if successful_solves > 0:
-            successful_attempts = [result['attempts'] for result in method_results if result['solved']]
+            successful_attempts = [result['attempts'] for result in algorithm_results if result['solved']]
             avg_attempts = sum(successful_attempts) / len(successful_attempts)
             min_attempts = min(successful_attempts)
             max_attempts = max(successful_attempts)
@@ -1244,7 +1251,7 @@ def automated_testing():
             min_attempts = 0
             max_attempts = 0
 
-        # Color code the method name based on overall performance
+        # Color code the algorithm name based on overall performance
         if wins == total_tests and avg_attempts <= 4:
             color = Colors.GREEN
         elif wins == total_tests and avg_attempts <= 6:
@@ -1252,7 +1259,7 @@ def automated_testing():
         else:
             color = Colors.RED
 
-        print(f"{color}{method_key:20}{Colors.RESET} | ", end="")
+        print(f"{color}{algorithm_key:20}{Colors.RESET} | ", end="")
         print(f"Solve: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ", end="")
         print(f"Win: {wins:2}/{total_tests} ({wins/total_tests*100:5.1f}%) | ", end="")
 
