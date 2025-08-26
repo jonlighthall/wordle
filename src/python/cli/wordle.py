@@ -1055,9 +1055,9 @@ def interactive_mode():
 
     # Choose target word mode
     print("\nChoose your game mode:")
-    print("1. TARGET - I'll specify the target word (for testing/practice)")
-    print("2. RANDOM - Pick a random word for me (AI vs AI simulation)")
-    print("3. WORDLE - Play against real Wordle website (get AI suggestions)")
+    print("1. TEST     - Specify the target word (for testing)")
+    print("2. PRACTICE - Pick a random word for me to solve")
+    print("3. WORDLE   - Play against real Wordle website (get AI suggestions)")
 
     while True:
         try:
