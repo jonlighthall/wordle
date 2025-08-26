@@ -330,7 +330,7 @@ class WordleSolver:
             else:
                 print(f"    Warning: Could not save updated word list to {self.word_file_path}")
 
-    def filter_words(self, guess: str, feedback: str) -> None:
+    def filter_words(self, guess: str, feedback: str, verbose: bool = True) -> None:
         """Filter possible words based on guess and feedback."""
         old_count = len(self.possible_words)
         self.possible_words = [
@@ -338,7 +338,8 @@ class WordleSolver:
             if is_valid_word(word, guess, feedback)
         ]
         new_count = len(self.possible_words)
-        print(f"    Filtered from {old_count} to {new_count} possible words")
+        if verbose:
+            print(f"    Filtered from {old_count} to {new_count} possible words")
 
     def choose_guess_random(self) -> str:
         """Choose a random guess from possible words."""
@@ -1409,9 +1410,25 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                     if feedback_input == 'R':
                         print(f"❌ Word '{chosen_word.upper()}' was rejected by Wordle")
-                        # Remove word from all solvers
+                        # Remove word from all solvers using shared approach
+                        first_solver = list(solvers.values())[0]
+                        print(f"    Removing '{chosen_word}' from word lists (rejected by Wordle)")
+                        updated_word_list = remove_word_from_list(first_solver.word_list, chosen_word)
+                        updated_possible_words = remove_word_from_list(first_solver.possible_words, chosen_word)
+                        print(f"    Word lists updated: {len(updated_word_list)} total words, {len(updated_possible_words)} possible words")
+                        
+                        # Apply the same updated lists to all solvers
                         for solver in solvers.values():
-                            solver.remove_rejected_word(chosen_word)
+                            solver.word_list = updated_word_list.copy()
+                            solver.possible_words = updated_possible_words.copy()
+                        
+                        # Save updated word list to file if we have a file path
+                        if first_solver.word_file_path:
+                            if save_words_to_file(first_solver.word_file_path, updated_word_list):
+                                print(f"    Updated word list saved to {first_solver.word_file_path}")
+                            else:
+                                print(f"    Warning: Could not save updated word list to {first_solver.word_file_path}")
+                        
                         print("🔄 Getting new suggestions...")
                         attempt -= 1  # Don't count rejected words
                         break
@@ -1439,10 +1456,23 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
             continue
 
         # Update all solvers with the guess and feedback
+        # Filter the word list once and apply to all solvers for efficiency
+        first_solver = list(solvers.values())[0]
+        old_count = len(first_solver.possible_words)
+        
+        # Perform filtering once
+        filtered_words = [
+            word for word in first_solver.possible_words
+            if is_valid_word(word, chosen_word, feedback)
+        ]
+        new_count = len(filtered_words)
+        print(f"    Filtered from {old_count} to {new_count} possible words")
+        
+        # Apply the same filtered list and game state to all solvers
         for solver in solvers.values():
             solver.guesses.append(chosen_word)
             solver.feedbacks.append(feedback)
-            solver.filter_words(chosen_word, feedback)
+            solver.possible_words = filtered_words.copy()  # Share the same filtered result
 
         # Show remaining words count
         remaining_counts = {alg: len(solver.possible_words) for alg, solver in solvers.items()}
