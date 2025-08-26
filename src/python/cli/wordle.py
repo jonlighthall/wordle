@@ -1281,7 +1281,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Consolidate all suggestions into one list
         all_suggestions = []
-        
+
         # Add algorithm suggestions
         for alg_key, data in unique_suggestions.items():
             all_suggestions.append({
@@ -1291,7 +1291,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                 'remaining': data['remaining'],
                 'source': 'algorithm'
             })
-        
+
         # Add popular words with their scores
         if valid_popular:
             for word in valid_popular:
@@ -1303,7 +1303,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                         search_space = isogram_space
 
                 scores = calculate_word_scores(word, solver_ref.possible_words, search_space)
-                
+
                 all_suggestions.append({
                     'word': word,
                     'type': 'Popular',
@@ -1317,18 +1317,17 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Display consolidated and sorted suggestions
         print("🎯 Word Suggestions (sorted by frequency score):")
-        print(f"{'Choice':<9} {'Word':<6} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
-        print("-" * 75)
+        print(f"     {'Word':<6} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5}")
+        print("-" * 69)
 
         for i, suggestion in enumerate(all_suggestions, 1):
             word = suggestion['word']
             word_type = suggestion['type']
             scores = suggestion['scores']
-            remaining = suggestion['remaining']
 
             print(f"{i:2d}. {word.upper():<6} {word_type:<15} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
-                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {remaining:<5}")
+                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f}")
 
         total_choices = len(all_suggestions)
 
@@ -1344,16 +1343,16 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                 # Check if it's a number (selection)
                 if user_input.isdigit() and 1 <= int(user_input) <= total_choices:
                     choice_num = int(user_input)
-                    
+
                     # Select from consolidated list
                     suggestion = all_suggestions[choice_num - 1]
                     chosen_word = suggestion['word']
                     chosen_alg = suggestion['type']
-                    
+
                     if chosen_word in ["No words left!", "(duplicate)"]:
                         print("❌ That suggestion has no valid words available!")
                         continue
-                    
+
                     print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
                     break
 
