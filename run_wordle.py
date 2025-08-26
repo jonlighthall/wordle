@@ -22,7 +22,11 @@ def main():
     print("6. Clean Word Files (remove duplicates)")
     print("="*50)
 
-    choice = input("Select an option (1-6): ").strip()
+    choice = input("Select an option (1-6) [default: 1]: ").strip()
+
+    # Make option 1 the default if no input is provided
+    if not choice:
+        choice = "1"
 
     if choice == "1":
         from src.python.cli.wordle import interactive_mode

@@ -60,14 +60,14 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
 
     optimal_starters = {
         "entropy": {
-            "general": "crane",      # Best overall entropy and proven track record
+            "general": "tares",      # Best overall entropy and proven track record
             "aggressive": "slate",   # Maximum elimination for difficult words
             "balanced": "adieu",     # Good balance covering vowels
-            "conservative": "tares"  # Current best performing starter
+            "conservative": "crane"  # Current best performing starter
         },
         "frequency": {
-            "general": "roate",      # Best frequency-based performance
-            "common": "stare",       # Focus on most common letters
+            "general": "saite",      # Best frequency-based performance
+            "common": "cares",       # Focus on most common letters
             "balanced": "arose",     # Balance of frequency and position
             "vowel_focus": "adieu"   # When expecting vowel-heavy targets
         },
@@ -1054,14 +1054,19 @@ def interactive_mode():
         solvers[alg_key] = WordleSolver(word_list, word_file_path=word_file_path)
 
     # Choose target word mode
-    print("\nHow do you want to set the target word?")
-    print("1. I'll tell you the target word")
-    print("2. Pick a random word for me")
-    print("3. I want to play against a real Wordle (I'll input feedback manually)")
+    print("\nChoose your game mode:")
+    print("1. TARGET - I'll specify the target word (for testing/practice)")
+    print("2. RANDOM - Pick a random word for me (AI vs AI simulation)")
+    print("3. WORDLE - Play against real Wordle website (get AI suggestions)")
 
     while True:
         try:
-            target_choice = input("\nEnter choice (1-3): ").strip()
+            target_choice = input("\nEnter choice (1-3) [default: 3]: ").strip()
+
+            # Make option 3 (real Wordle) the default if no input is provided
+            if not target_choice:
+                target_choice = "3"
+
             if target_choice in ["1", "2", "3"]:
                 break
             else:
@@ -1194,8 +1199,6 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         print(f"\n📝 Options:")
         print("• Enter 1-4 to use an algorithm's suggestion")
         print("• Enter a 5-letter word to use your own guess")
-        if mode == "manual":
-            print("• The algorithm details above are hidden from Wordle!")
 
         while True:
             user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
