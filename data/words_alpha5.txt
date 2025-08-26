@@ -9928,7 +9928,6 @@ ogams
 ogeed
 ogees
 ogham
-oghuz
 ogive
 ogled
 ogler

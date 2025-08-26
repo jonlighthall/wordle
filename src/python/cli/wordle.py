@@ -17,7 +17,7 @@ LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 # To change the default starting words, modify these constants:
 DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
 DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random fallback
-DEFAULT_INFORMATION_STARTER = "oghuz"  # Used by information algorithm (balances frequency and diversity)
+DEFAULT_INFORMATION_STARTER = "enzym"  # Used by information algorithm (balances frequency and diversity)
 DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
 
 # Popular Wordle starting words that users often choose
@@ -1297,15 +1297,17 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         # Consolidate all suggestions into one list
         all_suggestions = []
 
-        # Add algorithm suggestions
+        # Add algorithm suggestions (excluding "No words left!" and "(duplicate)" entries)
         for alg_key, data in unique_suggestions.items():
-            all_suggestions.append({
-                'word': data['word'],
-                'type': data['name'],
-                'scores': data['scores'],
-                'remaining': data['remaining'],
-                'source': 'algorithm'
-            })
+            # Skip entries that have no valid suggestions
+            if data['word'] not in ["No words left!", "(duplicate)"]:
+                all_suggestions.append({
+                    'word': data['word'],
+                    'type': data['name'],
+                    'scores': data['scores'],
+                    'remaining': data['remaining'],
+                    'source': 'algorithm'
+                })
 
         # Add popular words with their scores
         if valid_popular:
