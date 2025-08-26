@@ -457,7 +457,6 @@ alick
 alida
 alids
 alien
-aliet
 alife
 alifs
 align
@@ -688,7 +687,6 @@ annal
 annam
 annas
 annat
-annet
 annex
 annie
 anniv
@@ -886,7 +884,6 @@ armet
 armil
 armit
 armor
-arneb
 arnee
 arnut
 aroar
@@ -1068,7 +1065,6 @@ aurin
 aurir
 auris
 aurum
-autem
 autor
 autos
 autre
@@ -1092,7 +1088,6 @@ avert
 avgas
 avian
 avick
-aview
 avile
 avine
 avion
