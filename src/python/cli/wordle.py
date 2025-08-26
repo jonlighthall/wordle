@@ -993,28 +993,28 @@ def calculate_word_scores(word: str, possible_words: List[str], search_space: Li
     """Calculate entropy and frequency scores for a word for display purposes."""
     if not possible_words:
         return {'entropy': 0.0, 'frequency': 0, 'likelihood': 0.0}
-    
+
     # Calculate entropy score
     pattern_counts = Counter()
     for possible_target in possible_words:
         feedback = get_feedback(word, possible_target)
         pattern_counts[feedback] += 1
-    
+
     total_words = len(possible_words)
     entropy = 0
     for count in pattern_counts.values():
         probability = count / total_words
         entropy -= probability * math.log2(probability) if probability > 0 else 0
-    
+
     # Calculate frequency score
     freq = [Counter() for _ in range(5)]  # Assuming 5-letter words
     for search_word in search_space:
         for i, char in enumerate(search_word):
             freq[i][char] += 1
-    
+
     freq_score = sum(freq[i][word[i]] for i in range(len(word)))
     likelihood_score = freq_score / len(search_space) if search_space else 0
-    
+
     return {
         'entropy': entropy,
         'frequency': freq_score,
@@ -1043,12 +1043,12 @@ def interactive_mode():
 
     # Initialize multiple solvers (one for each algorithm)
     algorithms = {
-        'entropy': 'Entropy (Information Theory)',
-        'frequency': 'Frequency (Letter Frequency)', 
-        'ultra_efficient': 'Ultra Efficient (Speed Optimized)',
-        'adaptive_hybrid': 'Adaptive Hybrid (Dynamic Weighting)'
+        'entropy': 'Entropy',
+        'frequency': 'Frequency',
+        'ultra_efficient': 'Ultra-Efficient',
+        'adaptive_hybrid': 'Adaptive-Hybrid'
     }
-    
+
     solvers = {}
     for alg_key in algorithms.keys():
         solvers[alg_key] = WordleSolver(word_list, word_file_path=word_file_path)
@@ -1087,7 +1087,7 @@ def interactive_mode():
         # Multi-algorithm interactive solving mode
         print(f"\n🎯 Target word: {target.upper()}")
         print("🤖 AI algorithms will suggest words at each step...\n")
-        
+
         play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
 
     elif target_choice == "2":
@@ -1095,9 +1095,9 @@ def interactive_mode():
         target = random.choice(word_list)
         print(f"\n🎯 Random target word selected!")
         print("🤖 AI algorithms will suggest words at each step...\n")
-        
+
         result = play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
-        
+
         print(f"\n🎯 The target word was: {target.upper()}")
 
     else:
@@ -1110,7 +1110,7 @@ def interactive_mode():
         print("📘 Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray")
         print("🔄 Rejected words don't count toward your 6-guess limit!")
         print("="*60)
-        
+
         play_multi_algorithm_game(solvers, algorithms, None, mode="manual")
 
     # Ask if user wants to play again
@@ -1125,24 +1125,24 @@ def interactive_mode():
 
 def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = None, mode: str = "automated"):
     """Play a game showing suggestions from all algorithms."""
-    
+
     attempt = 0
     max_attempts = 6  # Standard Wordle limit
-    
+
     print(f"\n{'🎮 GAME START' if mode == 'manual' else '🤖 SOLVING'}")
     print("="*60)
-    
+
     while attempt < max_attempts:
         attempt += 1
         print(f"\n📍 GUESS {attempt}")
         print("-" * 40)
-        
+
         # Get suggestions from all algorithms
         suggestions = {}
-        
+
         for alg_key, alg_name in algorithms.items():
             solver = solvers[alg_key]
-            
+
             if not solver.possible_words:
                 suggestion = "No words left!"
                 scores = {'entropy': 0, 'frequency': 0, 'likelihood': 0}
@@ -1158,48 +1158,48 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     suggestion = solver.choose_guess_adaptive_hybrid()
                 else:
                     suggestion = solver.choose_guess_random()
-                
+
                 # Calculate scores for display
                 search_space = solver.possible_words.copy()
                 if should_prefer_isograms(solver.possible_words, len(solver.guesses)):
                     isogram_space = solver.filter_words_unique_letters(search_space)
                     if isogram_space:
                         search_space = isogram_space
-                
+
                 scores = calculate_word_scores(suggestion, solver.possible_words, search_space)
-            
+
             suggestions[alg_key] = {
                 'word': suggestion,
                 'name': alg_name,
                 'scores': scores,
                 'remaining': len(solver.possible_words)
             }
-        
+
         # Display suggestions with scores
         print("🤖 Algorithm Suggestions:")
-        print(f"{'Alg':<3} {'Algorithm':<25} {'Word':<8} {'Entropy':<8} {'Freq':<6} {'Likelihood':<10} {'Remaining':<9}")
-        print("-" * 75)
-        
+        print(f"{'#':<2} {'Algorithm':<15} {'Word':<6} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Left':<5}")
+        print("-" * 60)
+
         for i, (alg_key, data) in enumerate(suggestions.items(), 1):
             word = data['word']
             name = data['name']
             scores = data['scores']
             remaining = data['remaining']
-            
-            print(f"{i:<3} {name:<25} {word.upper():<8} "
-                  f"{scores['entropy']:<8.2f} {scores['frequency']:<6} "
-                  f"{scores['likelihood']:<10.2f} {remaining:<9}")
-        
+
+            print(f"{i:<2} {name:<15} {word.upper():<6} "
+                  f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
+                  f"{scores['likelihood']:<5.2f} {remaining:<5}")
+
         # Get user choice
         print(f"\n📝 Options:")
         print("• Enter 1-4 to use an algorithm's suggestion")
         print("• Enter a 5-letter word to use your own guess")
         if mode == "manual":
             print("• The algorithm details above are hidden from Wordle!")
-        
+
         while True:
             user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
-            
+
             # Check if it's a number (algorithm selection)
             if user_input.isdigit() and 1 <= int(user_input) <= 4:
                 choice_idx = int(user_input) - 1
@@ -1211,33 +1211,33 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     continue
                 print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
                 break
-            
+
             # Check if it's a valid 5-letter word
             elif len(user_input) == 5 and user_input.isalpha():
                 chosen_word = user_input
                 chosen_alg = "User Choice"
                 print(f"✅ Using your word: {chosen_word.upper()}")
                 break
-            
+
             else:
                 print("❌ Please enter 1-4 or a 5-letter word.")
-        
+
         # Handle the guess based on mode
         if mode == "automated" and target:
             # Automated mode - calculate feedback
             feedback = get_feedback(chosen_word, target)
             print(f"\n🎯 {chosen_word.upper()} → {feedback}")
-            
+
             # Check if solved
             if feedback == 'G' * 5:
                 print(f"\n🎉 Solved in {attempt} guesses using {chosen_alg}!")
                 return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
-            
+
         else:
             # Manual mode - get feedback from user
             while True:
                 feedback_input = input(f"\n🌐 Enter Wordle feedback for '{chosen_word.upper()}' (5 chars: G/Y/X, or 'R' if rejected): ").strip().upper()
-                
+
                 if feedback_input == 'R':
                     print(f"❌ Word '{chosen_word.upper()}' was rejected by Wordle")
                     # Remove word from all solvers
@@ -1246,39 +1246,39 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     print("🔄 Getting new suggestions...")
                     attempt -= 1  # Don't count rejected words
                     break
-                
+
                 elif len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
                     feedback = feedback_input
                     print(f"📝 Feedback recorded: {chosen_word.upper()} → {feedback}")
-                    
+
                     # Check if solved
                     if feedback == "GGGGG":
                         print(f"\n🎉 Congratulations! You solved it in {attempt} guesses!")
                         print(f"🏆 Winning algorithm: {chosen_alg}")
                         return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
                     break
-                
+
                 else:
                     print("❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected.")
-        
+
         # If word was rejected, continue to next iteration
         if mode == "manual" and feedback_input == 'R':
             continue
-        
+
         # Update all solvers with the guess and feedback
         for solver in solvers.values():
             solver.guesses.append(chosen_word)
             solver.feedbacks.append(feedback)
             solver.filter_words(chosen_word, feedback)
-        
+
         # Show remaining words count
         remaining_counts = {alg: len(solver.possible_words) for alg, solver in solvers.items()}
         print(f"\n📊 Words remaining: {remaining_counts}")
-        
+
         # Check if any solver has no words left
         if any(count == 0 for count in remaining_counts.values()):
             print("⚠️  Some algorithms have no possible words left! Check your feedback.")
-    
+
     # Game over
     print(f"\n😞 Game over! Used all {max_attempts} guesses.")
     return {'solved': False, 'attempts': max_attempts, 'algorithm': 'None'}
