@@ -697,7 +697,7 @@ class WordleSolver:
 
         # First guess: use proven optimal starter
         if attempt == 0:
-            starter = get_universal_optimal_starter("smart_hybrid", "general")
+            starter = get_universal_optimal_starter("entropy", "aggressive")  # "slate" - unique starter
             return starter
 
         # Very early termination for small word lists
@@ -760,7 +760,8 @@ class WordleSolver:
 
         # First guess: use proven optimal starter
         if attempt == 0:
-            starter = get_universal_optimal_starter("entropy", "general")
+            # Use a different starter than entropy to avoid duplicates
+            starter = get_universal_optimal_starter("entropy", "balanced")  # "adieu" instead of "tares"
             return starter
 
         # Very small word lists: direct guessing
@@ -853,7 +854,7 @@ class WordleSolver:
         # First guess: use universal optimal starting word
         if attempt == 0:
             # Use universal starter - not dependent on target word knowledge
-            optimal_start = get_universal_optimal_starter("entropy", "general")
+            optimal_start = get_universal_optimal_starter("smart_hybrid", "general")  # "crane"
             print(f"    Smart hybrid: using universal optimal start '{optimal_start}'")
             return optimal_start
 
