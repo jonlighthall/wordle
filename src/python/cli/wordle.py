@@ -20,6 +20,9 @@ DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random 
 DEFAULT_INFORMATION_STARTER = "adieu"   # Used by information algorithm (balances frequency and diversity)
 DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
 
+# Popular Wordle starting words that users often choose
+POPULAR_WORDS = ["crane", "slate", "trace", "stare", "audio", "ratio", "penis"]
+
 # ANSI color codes for terminal output
 class Colors:
     RED = '\033[91m'
@@ -695,7 +698,6 @@ class WordleSolver:
         # First guess: use proven optimal starter
         if attempt == 0:
             starter = get_universal_optimal_starter("smart_hybrid", "general")
-            print(f"    Ultra efficient: using proven starter '{starter}'")
             return starter
 
         # Very early termination for small word lists
@@ -759,7 +761,6 @@ class WordleSolver:
         # First guess: use proven optimal starter
         if attempt == 0:
             starter = get_universal_optimal_starter("entropy", "general")
-            print(f"    Adaptive hybrid: using proven starter '{starter}'")
             return starter
 
         # Very small word lists: direct guessing
@@ -1032,6 +1033,21 @@ def calculate_word_scores(word: str, possible_words: List[str], search_space: Li
         'information': info_score
     }
 
+def get_valid_popular_words(possible_words: List[str], guessed_words: List[str]) -> List[str]:
+    """Get popular words that are still valid and haven't been guessed yet."""
+    valid_popular = []
+
+    for word in POPULAR_WORDS:
+        # Skip if already guessed
+        if word in guessed_words:
+            continue
+
+        # Check if word is still possible based on current game state
+        if word in possible_words:
+            valid_popular.append(word)
+
+    return valid_popular
+
 def interactive_mode():
     """Interactive mode where user sees suggestions from all algorithms and chooses."""
     print("\n" + "="*60)
@@ -1209,26 +1225,75 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                   f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {remaining:<5}")
 
+        # Get valid popular words (excluding already suggested algorithm words and previously guessed words)
+        solver_ref = list(solvers.values())[0]  # Use first solver as reference for game state
+        guessed_words = solver_ref.guesses if hasattr(solver_ref, 'guesses') else []
+        algorithm_words = [data['word'].lower() for data in suggestions.values() if data['word'] != "No words left!"]
+
+        valid_popular = get_valid_popular_words(solver_ref.possible_words, guessed_words + algorithm_words)
+
+        # Display popular words if any are available
+        if valid_popular:
+            print(f"\n🌟 Popular Words (still valid):")
+            print(f"{'Choice':<8} {'Word':<8} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'Left':<5}")
+            print("-" * 70)
+
+            choice_offset = len(suggestions)
+            for i, word in enumerate(valid_popular):
+                # Calculate scores for this popular word
+                search_space = solver_ref.possible_words.copy()
+                if should_prefer_isograms(solver_ref.possible_words, len(solver_ref.guesses)):
+                    isogram_space = solver_ref.filter_words_unique_letters(search_space)
+                    if isogram_space:
+                        search_space = isogram_space
+
+                scores = calculate_word_scores(word, solver_ref.possible_words, search_space)
+
+                print(f"{choice_offset + i + 1}. {word.upper():<5} {'Popular':<15} "
+                      f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
+                      f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} {len(solver_ref.possible_words):<5}")
+
+            # Update total choices
+            total_choices = len(suggestions) + len(valid_popular)
+        else:
+            total_choices = len(suggestions)
+
         # Get user choice
         print(f"\n📝 Options:")
-        print("• Enter 1-5 to use an algorithm's suggestion")
+        print(f"• Enter 1-{total_choices} to select a suggestion")
         print("• Enter a 5-letter word to use your own guess")
 
         while True:
             try:
                 user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
 
-                # Check if it's a number (algorithm selection)
-                if user_input.isdigit() and 1 <= int(user_input) <= 5:
-                    choice_idx = int(user_input) - 1
-                    alg_key = list(suggestions.keys())[choice_idx]
-                    chosen_word = suggestions[alg_key]['word']
-                    chosen_alg = suggestions[alg_key]['name']
-                    if chosen_word == "No words left!":
-                        print("❌ That algorithm has no suggestions available!")
-                        continue
-                    print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
-                    break
+                # Check if it's a number (selection)
+                if user_input.isdigit() and 1 <= int(user_input) <= total_choices:
+                    choice_num = int(user_input)
+
+                    # Check if it's an algorithm suggestion
+                    if choice_num <= len(suggestions):
+                        choice_idx = choice_num - 1
+                        alg_key = list(suggestions.keys())[choice_idx]
+                        chosen_word = suggestions[alg_key]['word']
+                        chosen_alg = suggestions[alg_key]['name']
+                        if chosen_word == "No words left!":
+                            print("❌ That algorithm has no suggestions available!")
+                            continue
+                        print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
+                        break
+
+                    # It's a popular word selection
+                    else:
+                        popular_idx = choice_num - len(suggestions) - 1
+                        if popular_idx < len(valid_popular):
+                            chosen_word = valid_popular[popular_idx]
+                            chosen_alg = "Popular Word"
+                            print(f"✅ Using popular word: {chosen_word.upper()}")
+                            break
+                        else:
+                            print(f"❌ Invalid choice. Please enter 1-{total_choices} or a 5-letter word.")
+                            continue
 
                 # Check if it's a valid 5-letter word
                 elif len(user_input) == 5 and user_input.isalpha():
@@ -1238,7 +1303,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     break
 
                 else:
-                    print("❌ Please enter 1-5 or a 5-letter word.")
+                    print(f"❌ Please enter 1-{total_choices} or a 5-letter word.")
 
             except KeyboardInterrupt:
                 print("\n\nGoodbye!")

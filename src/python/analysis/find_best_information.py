@@ -23,20 +23,20 @@ DATA_DIR = os.path.join(REPO_ROOT, 'data')
 
 def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False, unique_letters_only: bool = True, wordle_appropriate_only: bool = True) -> List[Tuple[str, float, float, float]]:
     """Find the words with the highest (or lowest) information scores."""
-    
+
     # Filter word list based on parameters
     if wordle_appropriate_only:
         word_list = filter_wordle_appropriate(word_list)
         print(f"Filtered to {len(word_list)} Wordle-appropriate words")
-    
+
     if unique_letters_only:
         word_list = filter_words_unique_letters(word_list)
         print(f"Filtered to {len(word_list)} words with unique letters")
-    
+
     print(f"Information analysis starting. Scoring {len(word_list)} words...")
 
     word_scores = []
-    
+
     # For efficiency, we'll only calculate entropy for the top candidates if requested
     quick_scores = []
 
@@ -46,13 +46,13 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
 
         # Calculate information score using the existing utility function
         info_score = get_word_information_score(word, word_list)
-        
+
         # Calculate frequency-based likelihood for comparison (quick calculation)
         position_freqs = [Counter() for _ in range(5)]
         for w in word_list:
             for j, char in enumerate(w):
                 position_freqs[j][char] += 1
-        
+
         freq_score = sum(position_freqs[j][word[j]] for j in range(len(word)))
         likelihood_score = freq_score / len(word_list)
 
