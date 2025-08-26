@@ -169,16 +169,28 @@ def analyze_algorithm_performance_by_step(results_by_algorithm: dict) -> dict:
             entropy_avg = sum(entropy_reductions) / len(entropy_reductions)
             frequency_avg = sum(frequency_reductions) / len(frequency_reductions)
 
-            # Determine which is better and by how much
+            # Determine which is better and calculate weights based on actual advantage
             if entropy_avg > frequency_avg:
                 better_algorithm = "entropy"
                 advantage = entropy_avg - frequency_avg
-                entropy_weight = 0.5 + min(0.4, advantage / 100)  # Weight between 0.5-0.9
+                # More aggressive weighting: 0.1-0.2 advantage = +0.1 weight, 0.3+ advantage = +0.2 weight
+                if advantage >= 3.0:  # 3%+ advantage gets strong weighting
+                    entropy_weight = 0.7
+                elif advantage >= 1.0:  # 1-3% advantage gets moderate weighting
+                    entropy_weight = 0.6
+                else:  # <1% advantage stays balanced
+                    entropy_weight = 0.5
                 frequency_weight = 1.0 - entropy_weight
             else:
                 better_algorithm = "frequency"
                 advantage = frequency_avg - entropy_avg
-                frequency_weight = 0.5 + min(0.4, advantage / 100)  # Weight between 0.5-0.9
+                # Apply same logic for frequency advantages
+                if advantage >= 3.0:
+                    frequency_weight = 0.7
+                elif advantage >= 1.0:
+                    frequency_weight = 0.6
+                else:
+                    frequency_weight = 0.5
                 entropy_weight = 1.0 - frequency_weight
 
             step_performance[step] = {
@@ -752,15 +764,15 @@ class WordleSolver:
             print(f"    Adaptive hybrid: {num_possible} words left, guessing directly")
             return self.possible_words[0]
 
-        # Define step-based weights based on typical performance patterns
-        # These could be updated with actual analysis data
+        # Define step-based weights based on actual performance data from 100-word analysis
+        # Data shows entropy dominates from step 2 onwards, with step 1 being essentially tied
         step_weights = {
-            1: {'entropy': 0.7, 'frequency': 0.3},  # Entropy usually better early
-            2: {'entropy': 0.6, 'frequency': 0.4},  # Still favor entropy
-            3: {'entropy': 0.5, 'frequency': 0.5},  # Balanced mid-game
-            4: {'entropy': 0.4, 'frequency': 0.6},  # Frequency often better late
-            5: {'entropy': 0.3, 'frequency': 0.7},  # Favor frequency precision
-            6: {'entropy': 0.2, 'frequency': 0.8},  # Heavy frequency bias
+            1: {'entropy': 0.5, 'frequency': 0.5},  # Essentially tied (96.4% vs 97.4%)
+            2: {'entropy': 0.7, 'frequency': 0.3},  # Entropy wins 92.7% vs 89.2%
+            3: {'entropy': 0.7, 'frequency': 0.3},  # Entropy wins 75.8% vs 72.1%
+            4: {'entropy': 0.6, 'frequency': 0.4},  # Entropy wins 63.1% vs 62.5% (closer)
+            5: {'entropy': 0.6, 'frequency': 0.4},  # Entropy wins 50.0% vs 45.5%
+            6: {'entropy': 0.6, 'frequency': 0.4},  # Extrapolated - favor proven entropy advantage
         }
 
         current_step = attempt + 1
