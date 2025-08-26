@@ -66,7 +66,7 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
             "conservative": "crane"  # Current best performing starter
         },
         "frequency": {
-            "general": "saite",      # Best frequency-based performance
+            "general": "roate",      # Best frequency-based performance
             "common": "cares",       # Focus on most common letters
             "balanced": "arose",     # Balance of frequency and position
             "vowel_focus": "adieu"   # When expecting vowel-heavy targets
@@ -1182,7 +1182,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Display suggestions with scores
         print("🤖 Algorithm Suggestions:")
-        print(f"{'#':<2} {'Algorithm':<15} {'Word':<6} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Left':<5}")
+        print(f"{'Choice':<8} {'Algorithm':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Left':<5}")
         print("-" * 60)
 
         for i, (alg_key, data) in enumerate(suggestions.items(), 1):
@@ -1191,7 +1191,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
             scores = data['scores']
             remaining = data['remaining']
 
-            print(f"{i:<2} {name:<15} {word.upper():<6} "
+            print(f"{i}. {word.upper():<5} {name:<15} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                   f"{scores['likelihood']:<5.2f} {remaining:<5}")
 
@@ -1201,29 +1201,34 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         print("• Enter a 5-letter word to use your own guess")
 
         while True:
-            user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
+            try:
+                user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
 
-            # Check if it's a number (algorithm selection)
-            if user_input.isdigit() and 1 <= int(user_input) <= 4:
-                choice_idx = int(user_input) - 1
-                alg_key = list(suggestions.keys())[choice_idx]
-                chosen_word = suggestions[alg_key]['word']
-                chosen_alg = suggestions[alg_key]['name']
-                if chosen_word == "No words left!":
-                    print("❌ That algorithm has no suggestions available!")
-                    continue
-                print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
-                break
+                # Check if it's a number (algorithm selection)
+                if user_input.isdigit() and 1 <= int(user_input) <= 4:
+                    choice_idx = int(user_input) - 1
+                    alg_key = list(suggestions.keys())[choice_idx]
+                    chosen_word = suggestions[alg_key]['word']
+                    chosen_alg = suggestions[alg_key]['name']
+                    if chosen_word == "No words left!":
+                        print("❌ That algorithm has no suggestions available!")
+                        continue
+                    print(f"✅ Using {chosen_alg} suggestion: {chosen_word.upper()}")
+                    break
 
-            # Check if it's a valid 5-letter word
-            elif len(user_input) == 5 and user_input.isalpha():
-                chosen_word = user_input
-                chosen_alg = "User Choice"
-                print(f"✅ Using your word: {chosen_word.upper()}")
-                break
+                # Check if it's a valid 5-letter word
+                elif len(user_input) == 5 and user_input.isalpha():
+                    chosen_word = user_input
+                    chosen_alg = "User Choice"
+                    print(f"✅ Using your word: {chosen_word.upper()}")
+                    break
 
-            else:
-                print("❌ Please enter 1-4 or a 5-letter word.")
+                else:
+                    print("❌ Please enter 1-4 or a 5-letter word.")
+                    
+            except KeyboardInterrupt:
+                print("\n\nGoodbye!")
+                return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
 
         # Handle the guess based on mode
         if mode == "automated" and target:
@@ -1239,30 +1244,35 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         else:
             # Manual mode - get feedback from user
             while True:
-                feedback_input = input(f"\n🌐 Enter Wordle feedback for '{chosen_word.upper()}' (5 chars: G/Y/X, or 'R' if rejected): ").strip().upper()
+                try:
+                    feedback_input = input(f"\n🌐 Enter Wordle feedback for '{chosen_word.upper()}' (5 chars: G/Y/X, or 'R' if rejected): ").strip().upper()
 
-                if feedback_input == 'R':
-                    print(f"❌ Word '{chosen_word.upper()}' was rejected by Wordle")
-                    # Remove word from all solvers
-                    for solver in solvers.values():
-                        solver.remove_rejected_word(chosen_word)
-                    print("🔄 Getting new suggestions...")
-                    attempt -= 1  # Don't count rejected words
-                    break
+                    if feedback_input == 'R':
+                        print(f"❌ Word '{chosen_word.upper()}' was rejected by Wordle")
+                        # Remove word from all solvers
+                        for solver in solvers.values():
+                            solver.remove_rejected_word(chosen_word)
+                        print("🔄 Getting new suggestions...")
+                        attempt -= 1  # Don't count rejected words
+                        break
 
-                elif len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
-                    feedback = feedback_input
-                    print(f"📝 Feedback recorded: {chosen_word.upper()} → {feedback}")
+                    elif len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
+                        feedback = feedback_input
+                        print(f"📝 Feedback recorded: {chosen_word.upper()} → {feedback}")
 
-                    # Check if solved
-                    if feedback == "GGGGG":
-                        print(f"\n🎉 Congratulations! You solved it in {attempt} guesses!")
-                        print(f"🏆 Winning algorithm: {chosen_alg}")
-                        return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
-                    break
+                        # Check if solved
+                        if feedback == "GGGGG":
+                            print(f"\n🎉 Congratulations! You solved it in {attempt} guesses!")
+                            print(f"🏆 Winning algorithm: {chosen_alg}")
+                            return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
+                        break
 
-                else:
-                    print("❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected.")
+                    else:
+                        print("❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected.")
+                        
+                except KeyboardInterrupt:
+                    print("\n\nGoodbye!")
+                    return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
 
         # If word was rejected, continue to next iteration
         if mode == "manual" and feedback_input == 'R':
