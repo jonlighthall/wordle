@@ -123,9 +123,9 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
 def print_word_analysis(words: List[Tuple[str, float, float]], title: str, max_display: int = 25):
     """Print formatted analysis of words with their frequencies."""
     print(f"\n🎯 {title}")
-    print("=" * 70)
-    print(f"{'Rank':<4} {'Word':<8} {'Raw Frequency':<15} {'Scaled Score':<12} {'Classification'}")
-    print("-" * 70)
+    print("=" * 85)
+    print(f"{'Rank':<4} {'Word':<8} {'Raw Frequency':<15} {'Log10':<8} {'Scaled Score':<12} {'Classification'}")
+    print("-" * 85)
 
     for i, (word, raw_freq, scaled_score) in enumerate(words[:max_display], 1):
         # Classify the word
@@ -146,7 +146,14 @@ def print_word_analysis(words: List[Tuple[str, float, float]], title: str, max_d
         else:
             freq_str = f"{raw_freq:.6f}"
 
-        print(f"{i:<4} {word.upper():<8} {freq_str:<15} {scaled_score:<12.3f} {classification}")
+        # Calculate log10 value
+        if raw_freq > 0:
+            log10_val = math.log10(raw_freq)
+            log10_str = f"{log10_val:.2f}"
+        else:
+            log10_str = "N/A"
+
+        print(f"{i:<4} {word.upper():<8} {freq_str:<15} {log10_str:<8} {scaled_score:<12.3f} {classification}")
 
 
 def main():
@@ -191,14 +198,24 @@ def main():
 
     # Show some example scalings
     print(f"\n📊 EXAMPLE SCALING COMPARISONS")
-    print("-" * 50)
+    print("-" * 65)
+    print(f"{'Word':<8} {'Raw Frequency':<12} {'Log10':<8} {'Scaled Score'}")
+    print("-" * 65)
     example_words = ['about', 'house', 'water', 'plant', 'crane', 'tares', 'xylem']
     for word in example_words:
         if word in [w[0] for w in most_common + least_common]:
             raw_freq = get_raw_frequency(word)
             scaled_score = scale_frequency_score(raw_freq)
             freq_str = f"{raw_freq:.2e}" if raw_freq < 1e-4 else f"{raw_freq:.6f}"
-            print(f"{word.upper():<8} {freq_str:<12} → {scaled_score:.3f}")
+
+            # Calculate log10 value
+            if raw_freq > 0:
+                log10_val = math.log10(raw_freq)
+                log10_str = f"{log10_val:.2f}"
+            else:
+                log10_str = "N/A"
+
+            print(f"{word.upper():<8} {freq_str:<12} {log10_str:<8} {scaled_score:.3f}")
 
 
 if __name__ == "__main__":
