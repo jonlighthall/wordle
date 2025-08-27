@@ -19,12 +19,13 @@ def main():
     print("3. Find Best Words by Entropy")
     print("4. Find Best Words by Letter Frequency")
     print("5. Find Best Words by Word Frequency")
-    print("6. Run Tests")
-    print("7. Clean and Sort Word Files")
+    print("6. Known Word Transition Point Analysis")
+    print("7. Run Tests")
+    print("8. Clean and Sort Word Files")
     print("="*50)
 
     try:
-        choice = input("Select an option (1-7) [default: 1]: ").strip()
+        choice = input("Select an option (1-8) [default: 1]: ").strip()
     except KeyboardInterrupt:
         print("\nThanks for playing! 👋")
         return
@@ -49,6 +50,9 @@ def main():
         from src.python.analysis.find_best_wordfreq import main as wordfreq_analysis
         wordfreq_analysis()
     elif choice == "6":
+        from src.python.analysis.find_best_transition_point import main as transition_analysis
+        transition_analysis()
+    elif choice == "7":
         print("Running tests...")
         from tests.test_feedback import test_feedback_input
         from tests.test_rejection import test_word_removal
@@ -57,7 +61,7 @@ def main():
         test_feedback_input()
         test_word_removal()
         test_attempt_counting()
-    elif choice == "7":
+    elif choice == "8":
         # Import and run the cleanup script
         import subprocess
         subprocess.run([sys.executable, "cleanup_word_files.py"])
