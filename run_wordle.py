@@ -18,12 +18,13 @@ def main():
     print("2. Automated Testing")
     print("3. Find Best Entropy Words")
     print("4. Find Best Frequency Words")
-    print("5. Run Tests")
-    print("6. Clean Word Files (remove duplicates)")
+    print("5. Find Best Real-World Frequency Words")
+    print("6. Run Tests")
+    print("7. Clean Word Files (remove duplicates)")
     print("="*50)
 
     try:
-        choice = input("Select an option (1-6) [default: 1]: ").strip()
+        choice = input("Select an option (1-7) [default: 1]: ").strip()
     except KeyboardInterrupt:
         print("\nThanks for playing! 🎯")
         return
@@ -45,6 +46,9 @@ def main():
         from src.python.analysis.find_best_frequency import main as frequency_analysis
         frequency_analysis()
     elif choice == "5":
+        from src.python.analysis.find_best_wordfreq import main as wordfreq_analysis
+        wordfreq_analysis()
+    elif choice == "6":
         print("Running tests...")
         from tests.test_feedback import test_feedback_input
         from tests.test_rejection import test_word_removal
@@ -53,12 +57,12 @@ def main():
         test_feedback_input()
         test_word_removal()
         test_attempt_counting()
-    elif choice == "6":
+    elif choice == "7":
         # Import and run the cleanup script
         import subprocess
         subprocess.run([sys.executable, "cleanup_word_files.py"])
     else:
-        print("Invalid choice. Please select 1-6.")
+        print("Invalid choice. Please select 1-7.")
 
 if __name__ == "__main__":
     main()
