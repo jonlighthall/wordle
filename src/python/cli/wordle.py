@@ -1608,6 +1608,11 @@ def automated_testing():
     else:
         print(f"Loaded {len(word_list)} words from file")
 
+    # Check wordfreq availability for automated testing
+    if not is_wordfreq_available():
+        print("\n⚠️  Word frequency scoring unavailable (install 'wordfreq' library)")
+        print("   Some algorithms may use fallback frequency values")
+
     # Prompt user for which test word file to use
     print("\nSelect which word file to test against:")
     print("1. All past Wordle words (words_past5_date.txt)")
