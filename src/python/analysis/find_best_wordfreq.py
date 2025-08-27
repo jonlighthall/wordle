@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to find the words with the highest and lowest    print(f"📊 Analyzing real-world frequencies for {len(word_list)} words...")
-    print("   Using wordfreq 'large' dataset (~321k words for better coverage)")
-
-    # Quick coverage comparison
-    print("   📈 Coverage improvement: Large wordlist finds ~3.7x more words than small wordlist")
-
-    word_scores = []
-    frequency_distribution = defaultdict(int)
-    total_words = len(word_list)
-    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reportsorld frequency scores from the word list.
+Script to find the words with the highest and lowest real-world frequency scores from the word list.
 This uses the wordfreq library to get actual word usage frequencies from real text corpora.
 """
 
@@ -89,8 +80,12 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
     print(f"📊 Analyzing real-world frequencies for {len(word_list)} words...")
     print("   Using wordfreq 'large' dataset (~321k words for better coverage)")
 
+    # Quick coverage comparison
+    print("   📈 Coverage improvement: Large wordlist finds ~3.7x more words than small wordlist")
+
     word_scores = []
     frequency_distribution = defaultdict(int)
+    words_not_found = []
     total_words = len(word_list)
     step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
 
@@ -103,8 +98,12 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
         scaled_score = scale_frequency_score(raw_freq)
         word_scores.append((word, raw_freq, scaled_score))
 
+        # Track words not found
+        if raw_freq == 0.0:
+            words_not_found.append(word)
+
         # Track frequency distribution
-        if scaled_score == 0.0:
+        if raw_freq == 0.0:  # Use raw_freq to match words_not_found logic
             frequency_distribution['zero'] += 1
         elif scaled_score < 0.1:
             frequency_distribution['very_rare'] += 1
@@ -117,22 +116,39 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
         else:
             frequency_distribution['very_common'] += 1
 
-    print(f"   Completed processing {len(word_list)} words (100.0%).")    # Sort by scaled score
+    print(f"   Completed processing {len(word_list)} words (100.0%).")
+
+    # Sort by scaled score
     word_scores.sort(key=lambda x: x[2], reverse=True)
 
     # Split into most and least common
     most_common = word_scores[:50]  # Top 50
-    least_common = [w for w in word_scores if w[2] == 0.0]  # All zero-score words
-    if not least_common:
-        least_common = word_scores[-50:]  # Bottom 50 if no zero scores
+
+    # For least common, only include words with non-zero frequencies
+    words_with_freq = [w for w in word_scores if w[1] > 0.0]  # Only non-zero raw frequencies
+    least_common = words_with_freq[-50:]  # Bottom 50 with actual frequencies
 
     print(f"\n📈 Frequency Distribution:")
-    print(f"   Very Common (0.7-1.0): {frequency_distribution['very_common']} words")
-    print(f"   Common (0.5-0.7):      {frequency_distribution['common']} words")
-    print(f"   Uncommon (0.3-0.5):    {frequency_distribution['uncommon']} words")
-    print(f"   Rare (0.1-0.3):        {frequency_distribution['rare']} words")
-    print(f"   Very Rare (0.0-0.1):   {frequency_distribution['very_rare']} words")
-    print(f"   Not Found (0.0):       {frequency_distribution['zero']} words")
+    print(f"   Very Common (0.7-1.0): {frequency_distribution['very_common']:>5} words ({frequency_distribution['very_common']/total_words*100:>5.1f}%)")
+    print(f"   Common (0.5-0.7):      {frequency_distribution['common']:>5} words ({frequency_distribution['common']/total_words*100:>5.1f}%)")
+    print(f"   Uncommon (0.3-0.5):    {frequency_distribution['uncommon']:>5} words ({frequency_distribution['uncommon']/total_words*100:>5.1f}%)")
+    print(f"   Rare (0.1-0.3):        {frequency_distribution['rare']:>5} words ({frequency_distribution['rare']/total_words*100:>5.1f}%)")
+    print(f"   Very Rare (0.0-0.1):   {frequency_distribution['very_rare']:>5} words ({frequency_distribution['very_rare']/total_words*100:>5.1f}%)")
+    print(f"   Not Found (0.0):       {frequency_distribution['zero']:>5} words ({frequency_distribution['zero']/total_words*100:>5.1f}%)")
+
+    # Report words not found
+    if words_not_found:
+        print(f"\n❌ Words Not Found in Wordfreq Database:")
+        print(f"   {len(words_not_found)} words were not found in the wordfreq 'large' dataset")
+        # Show a short example of words not found (up to 10)
+        example_not_found = words_not_found[:10]
+        print(f"   Examples: {', '.join([w.upper() for w in example_not_found[:5]])}", end="")
+        if len(example_not_found) > 5:
+            print(f", {', '.join([w.upper() for w in example_not_found[5:]])}", end="")
+        if len(words_not_found) > 10:
+            print(f" ... and {len(words_not_found) - 10} more")
+        else:
+            print()
 
     return most_common, least_common
 
