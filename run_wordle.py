@@ -16,17 +16,17 @@ def main():
     print("="*50)
     print("1. Interactive Wordle Solver")
     print("2. Automated Testing")
-    print("3. Find Best Entropy Words")
-    print("4. Find Best Letter Frequency Words")
-    print("5. Find Best Real-World Frequency Words")
+    print("3. Find Best Words by Entropy")
+    print("4. Find Best Words by Letter Frequency")
+    print("5. Find Best Words by Word Frequency")
     print("6. Run Tests")
-    print("7. Clean Word Files (remove duplicates)")
+    print("7. Clean and Sort Word Files")
     print("="*50)
 
     try:
         choice = input("Select an option (1-7) [default: 1]: ").strip()
     except KeyboardInterrupt:
-        print("\nThanks for playing! 🎯")
+        print("\nThanks for playing! 👋")
         return
 
     # Make option 1 the default if no input is provided
