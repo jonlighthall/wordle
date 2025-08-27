@@ -63,7 +63,7 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
     if calculate_entropy_upfront:
         print(f"📊 Calculating entropy for top {len(top_candidates)} candidates...")
         total_candidates = len(top_candidates)
-        
+
         # Use common progress reporting
         progress_reporter = ProgressReporter(total_candidates, report_interval=10)
 
@@ -71,7 +71,7 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
             progress_reporter.report_progress(i, "entropy calculations")
             entropy = calculate_entropy(word, word_list)
             word_scores.append((word, info_score, likelihood_score, entropy))
-        
+
         progress_reporter.final_report("entropy calculations")
     else:
         word_scores = top_candidates
@@ -83,7 +83,7 @@ def main():
     """Main function to analyze information scores."""
     print("🔍 Information Score Analysis")
     print("=" * 70)
-    
+
     # Load word list using common utilities
     word_list = load_word_list_with_fallback("words_alpha5.txt", ["words_alpha5_100.txt"])
     if not word_list:

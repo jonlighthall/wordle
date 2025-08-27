@@ -55,7 +55,7 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
 
     return freq_score, likelihood_score
 
-def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False, unique_letters_only: bool = True, wordle_appropriate_only: bool = True) -> List[Tuple[str, int, float, float]]:
+def find_best_letter_frequency_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False, unique_letters_only: bool = True, wordle_appropriate_only: bool = True) -> List[Tuple[str, int, float, float]]:
     """Find the words with the highest (or lowest) frequency scores."""
     analysis_type = "lowest" if find_lowest else "highest"
     original_count = len(word_list)
@@ -90,7 +90,7 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
 
     word_scores = []
     total_words = len(word_list)
-    
+
     # Use common progress reporting
     progress_reporter = ProgressReporter(total_words, report_interval=10)
 
@@ -108,7 +108,7 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
             entropy = 0.0  # Placeholder - will calculate only for top words if needed
 
         word_scores.append((word, freq_score, likelihood_score, entropy))
-    
+
     progress_reporter.final_report("words")
 
     # Sort by frequency score (lowest first if find_lowest, highest first otherwise)
@@ -128,7 +128,7 @@ def main():
     """Main function to analyze letter frequencies."""
     print("🔍 Letter Frequency Analysis")
     print("=" * 70)
-    
+
     # Load word list using common utilities
     word_list = load_word_list_with_fallback("words_alpha5.txt", ["words_alpha5_100.txt"])
     if not word_list:
@@ -142,8 +142,8 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (5-LETTER WORDS)")
     print(f"{'='*80}")
 
-    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
-                                         unique_letters_only=False, wordle_appropriate_only=False)
+    top_words = find_best_letter_frequency_words(word_list, top_n=20, find_lowest=False,
+                                                 unique_letters_only=False, wordle_appropriate_only=False)
 
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")
@@ -158,8 +158,8 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
-                                         unique_letters_only=True, wordle_appropriate_only=False)
+    top_words = find_best_letter_frequency_words(word_list, top_n=20, find_lowest=False,
+                                                 unique_letters_only=True, wordle_appropriate_only=False)
 
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")
@@ -174,8 +174,8 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
-                                         unique_letters_only=True, wordle_appropriate_only=True)
+    top_words = find_best_letter_frequency_words(word_list, top_n=20, find_lowest=False,
+                                                 unique_letters_only=True, wordle_appropriate_only=True)
 
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")
@@ -190,8 +190,8 @@ def main():
     print("LOWEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    bottom_words = find_best_frequency_words(word_list, top_n=20, find_lowest=True,
-                                           unique_letters_only=True, wordle_appropriate_only=True)
+    bottom_words = find_best_letter_frequency_words(word_list, top_n=20, find_lowest=True,
+                                                    unique_letters_only=True, wordle_appropriate_only=True)
 
     print(f"{'Rank':<4} {'Word':<8} {'Freq Score':<10} {'Likelihood':<12} {'Entropy':<10}")
     print(f"{'-'*55}")

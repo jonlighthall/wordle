@@ -21,7 +21,7 @@ wordle/
 │       │   └── wordle_utils.py
 │       ├── analysis/      # Analysis scripts
 │       │   ├── find_best_entropy.py
-│       │   └── find_best_frequency.py
+│       │   └── find_best_letter_frequency.py
 │       └── cli/           # Command-line interface
 │           └── wordle.py
 ├── tests/                 # Test files
@@ -80,7 +80,7 @@ python3 -m src.python.cli.wordle
 
 # Analysis tools
 python3 -m src.python.analysis.find_best_entropy
-python3 -m src.python.analysis.find_best_frequency
+python3 -m src.python.analysis.find_best_letter_frequency
 
 # Tests
 python3 -m tests.test_feedback

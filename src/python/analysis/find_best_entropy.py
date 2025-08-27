@@ -24,7 +24,7 @@ def find_best_entropy_words(word_list: List[str], top_n: int = 10) -> List[Tuple
 
     word_entropies = []
     total_words = len(word_list)
-    
+
     # Use common progress reporting
     progress_reporter = ProgressReporter(total_words, report_interval=10)
 
@@ -45,7 +45,7 @@ def main():
     """Main function to find best entropy words."""
     print("🔍 Entropy-Based First Guess Analysis")
     print("=" * 60)
-    
+
     # Load word list using common utilities
     word_list = load_word_list_with_fallback("words_alpha5_100.txt", ["words_alpha5.txt"])
     if not word_list:
