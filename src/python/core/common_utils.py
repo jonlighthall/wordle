@@ -41,6 +41,19 @@ def check_wordfreq_availability() -> bool:
         return False
     return True
 
+def format_wordfreq_score(score: float) -> str:
+    """Format word frequency score for display.
+    
+    Returns 'N/A' if wordfreq is not available, otherwise formats the score.
+    """
+    if not WORDFREQ_AVAILABLE:
+        return "N/A"
+    return f"{score:.2f}"
+
+def is_wordfreq_available() -> bool:
+    """Check if wordfreq library is available for external use."""
+    return WORDFREQ_AVAILABLE
+
 def get_raw_word_frequency(word: str, lang: str = "en", wordlist: str = "large") -> float:
     """Get raw frequency score from wordfreq library.
 

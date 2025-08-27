@@ -7,7 +7,7 @@ from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
 from functools import partial
 from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
-from ..core.common_utils import get_word_frequency_score, WORDFREQ_AVAILABLE, REPO_ROOT, DATA_DIR, LOGS_DIR
+from ..core.common_utils import get_word_frequency_score, WORDFREQ_AVAILABLE, REPO_ROOT, DATA_DIR, LOGS_DIR, format_wordfreq_score, is_wordfreq_available
 
 # Default starting words for algorithms
 # To change the default starting words, modify these constants:
@@ -1137,6 +1137,11 @@ def interactive_mode():
     else:
         print(f"Loaded {len(word_list)} words from file")
 
+    # Check wordfreq availability and warn if necessary
+    if not is_wordfreq_available():
+        print("\n⚠️  Word frequency scoring unavailable (install 'wordfreq' library)")
+        print("   WF column will show 'N/A' in suggestions")
+    
     # Initialize multiple solvers (one for each algorithm)
     algorithms = {
         'entropy': 'Entropy',
@@ -1427,7 +1432,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
             print(f"{i:2d}. {word.upper():<6} {word_type:<18} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                   f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} "
-                  f"{scores.get('wordfreq', 0):<5.2f}")
+                  f"{format_wordfreq_score(scores.get('wordfreq', 0)):<5}")
 
         total_choices = len(all_suggestions)
 
