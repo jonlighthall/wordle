@@ -34,29 +34,31 @@ POPULAR_WORDS = ["crane", "slate", "trace", "stare", "audio", "ratio", "penis"]
 def get_word_frequency_score(word: str, lang: str = "en") -> float:
     """Get real-world frequency score for a word using wordfreq library.
 
-    Returns a score from 0.0 to 1.0 where 1.0 is most common.
-    If wordfreq is not available, returns 0.5 as neutral score.
+    Returns a logarithmic score where each unit represents a 10x frequency difference.
+    - Words not found: score = 0.0
+    - log10(1e-8) = -8 → score = 1.0 (baseline rare)
+    - log10(1e-7) = -7 → score = 2.0 (10x more common)
+    - log10(1e-2) = -2 → score = 7.0 (1,000,000x more common)
+
     Uses 'large' wordlist (~321k words) for better coverage.
+    If wordfreq is not available, returns 2.5 as neutral score (middle range).
     """
     if not WORDFREQ_AVAILABLE:
-        return 0.5
+        return 2.5  # Neutral score in the new scale (between rare and common)
 
     try:
-        # Get frequency (ranges from ~1e-7 for very rare words to ~0.01 for very common)
+        # Get frequency using large wordlist for better coverage
         freq = word_frequency(word, lang, wordlist="large")
 
-        # Scale to 0-1 range using log scale to handle the wide range
-        # Most common words are around 1e-2, rare words around 1e-7
         if freq > 0:
-            # Use log scale: log10(1e-7) = -7, log10(1e-2) = -2
+            # Use log10 and shift so -8 maps to 1.0
             log_freq = math.log10(freq)
-            # Scale from [-7, -2] to [0, 1]
-            score = max(0.0, min(1.0, (log_freq + 7) / 5))
+            score = max(0.0, log_freq + 8.0)
             return score
         else:
             return 0.0  # Word not found in frequency data
     except Exception:
-        return 0.5  # Fallback score
+        return 2.5  # Fallback score
 
 def score_words_by_frequency(words: List[str]) -> List[Tuple[str, float]]:
     """Score a list of words by their real-world frequency.
@@ -1394,8 +1396,13 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
             # Use wordfreq as primary, letter frequency as secondary if available
             wordfreq_score = scores.get('wordfreq', 0)
             lettfreq_score = scores.get('frequency', 0) / 1000.0 if scores.get('frequency', 0) > 0 else 0
+
+            # Normalize wordfreq score to 0-1 range for composite calculation
+            # New wordfreq scale: 0 = not found, ~1-2 = very rare, ~7 = most common
+            wordfreq_normalized = min(1.0, wordfreq_score / 7.0) if wordfreq_score > 0 else 0.0
+
             # Weighted combination: 70% real-world frequency, 30% letter frequency
-            return wordfreq_score * 0.7 + lettfreq_score * 0.3
+            return wordfreq_normalized * 0.7 + lettfreq_score * 0.3
 
         all_suggestions.sort(key=get_sort_key, reverse=True)
 
