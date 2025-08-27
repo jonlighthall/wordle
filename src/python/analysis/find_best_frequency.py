@@ -1,28 +1,20 @@
 #!/usr/bin/env python3
 """
-Script to find the words with the highest and low    print(f"Calculating highest letter frequency scores for {len(word_list)} words...")
-
-    # OPTIMIZED: Calculate frequencies once for the entire word list
-    word_length = 5
-    freq = [Counter() for _ in range(word_length)]
-
-    for word in word_list:
-        for i, char in enumerate(word):
-            freq[i][char] += 1
-
-    print(f"Letter frequency analysis complete. Now scoring {len(word_list)} words...")frequency scores from the word list.
+Script to find the words with the highest and lowest letter frequency scores from the word list.
 This calculates the letter frequency for each position and scores words accordingly.
 """
 
 import math
 import os
+import sys
 from collections import Counter
 from typing import List, Tuple
-from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, load_words, filter_words_unique_letters, filter_wordle_appropriate
 
-# Get the repository root directory (4 levels up from this file)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-DATA_DIR = os.path.join(REPO_ROOT, 'data')
+# Add the parent directory to sys.path to import modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, load_words, filter_words_unique_letters, filter_wordle_appropriate
+from core.common_utils import DATA_DIR, ProgressReporter, load_word_list_with_fallback
 
 
 def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, float]:
@@ -84,7 +76,7 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
         else:
             print(f"Filtered to {filtered_count} words with unique letters (isograms) from {original_count} total words")
 
-    print(f"Calculating {analysis_type} frequency scores for {len(word_list)} words...")
+    print(f"📊 Calculating {analysis_type} frequency scores for {len(word_list)} words...")
 
     # OPTIMIZED: Calculate frequencies once for the entire word list
     word_length = 5
@@ -94,16 +86,16 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
         for i, char in enumerate(word):
             freq[i][char] += 1
 
-    print(f"Frequency analysis complete. Now scoring {len(word_list)} words...")
+    print(f"   Letter frequency analysis complete. Now scoring {len(word_list)} words...")
 
     word_scores = []
     total_words = len(word_list)
-    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
+    
+    # Use common progress reporting
+    progress_reporter = ProgressReporter(total_words, report_interval=10)
 
     for i, word in enumerate(word_list):
-        if i % step_size == 0 or i == total_words - 1:
-            progress_percent = (i / total_words) * 100
-            print(f"   Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
+        progress_reporter.report_progress(i, "words")
 
         # OPTIMIZED: Simple arithmetic using pre-calculated frequencies
         freq_score = sum(freq[i][word[i]] for i in range(word_length))
@@ -116,7 +108,8 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
             entropy = 0.0  # Placeholder - will calculate only for top words if needed
 
         word_scores.append((word, freq_score, likelihood_score, entropy))
-    print(f"Completed processing {len(word_list)} words (100.0%).")
+    
+    progress_reporter.final_report("words")
 
     # Sort by frequency score (lowest first if find_lowest, highest first otherwise)
     word_scores.sort(key=lambda x: x[1], reverse=not find_lowest)
@@ -132,12 +125,14 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
     return word_scores[:top_n]
 
 def main():
-    # Load word list from file
-    word_list = load_words(os.path.join(DATA_DIR, "words_alpha5.txt"))
+    """Main function to analyze letter frequencies."""
+    print("🔍 Letter Frequency Analysis")
+    print("=" * 70)
+    
+    # Load word list using common utilities
+    word_list = load_word_list_with_fallback("words_alpha5.txt", ["words_alpha5_100.txt"])
     if not word_list:
-        print("Error: Word file not found at data/words_alpha5.txt")
         return
-    print(f"Loaded {len(word_list)} words from file")
 
     # Print most likely letters by position
     calculate_frequency_score(word_list[0], word_list)

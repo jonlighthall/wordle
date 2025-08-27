@@ -11,14 +11,11 @@ import sys
 from collections import Counter
 from typing import List, Tuple
 
-# Add the parent directory to the path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+# Add the parent directory to sys.path to import modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.python.core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, load_words, filter_words_unique_letters, filter_wordle_appropriate, get_word_information_score
-
-# Get the repository root directory (4 levels up from this file)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-DATA_DIR = os.path.join(REPO_ROOT, 'data')
+from core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, load_words, filter_words_unique_letters, filter_wordle_appropriate, get_word_information_score
+from core.common_utils import DATA_DIR, ProgressReporter, load_word_list_with_fallback
 
 
 def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowest: bool = False, calculate_entropy_upfront: bool = False, unique_letters_only: bool = True, wordle_appropriate_only: bool = True) -> List[Tuple[str, float, float, float]]:
@@ -64,16 +61,18 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
 
     # Only calculate entropy for top candidates if explicitly requested
     if calculate_entropy_upfront:
-        print(f"Calculating entropy for top {len(top_candidates)} candidates...")
+        print(f"📊 Calculating entropy for top {len(top_candidates)} candidates...")
         total_candidates = len(top_candidates)
-        step_size = max(1, total_candidates // 10)  # Calculate step size for 10 progress reports
+        
+        # Use common progress reporting
+        progress_reporter = ProgressReporter(total_candidates, report_interval=10)
 
         for i, (word, info_score, likelihood_score, _) in enumerate(top_candidates):
-            if i % step_size == 0 or i == total_candidates - 1:
-                progress_percent = (i / total_candidates) * 100
-                print(f"Entropy progress: {i}/{total_candidates} ({progress_percent:.1f}%)...")
+            progress_reporter.report_progress(i, "entropy calculations")
             entropy = calculate_entropy(word, word_list)
             word_scores.append((word, info_score, likelihood_score, entropy))
+        
+        progress_reporter.final_report("entropy calculations")
     else:
         word_scores = top_candidates
 
@@ -81,12 +80,14 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
 
 
 def main():
-    # Load word list from file
-    word_list = load_words(os.path.join(DATA_DIR, "words_alpha5.txt"))
+    """Main function to analyze information scores."""
+    print("🔍 Information Score Analysis")
+    print("=" * 70)
+    
+    # Load word list using common utilities
+    word_list = load_word_list_with_fallback("words_alpha5.txt", ["words_alpha5_100.txt"])
     if not word_list:
-        print("Error: Word file not found at data/words_alpha5.txt")
         return
-    print(f"Loaded {len(word_list)} words from file")
 
     # Find highest information score words
     print(f"\n{'='*80}")
