@@ -13,15 +13,15 @@ from typing import List, Tuple
 # Add the parent directory to sys.path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from core.common_utils import DATA_DIR, ProgressReporter, load_word_list_with_fallback
 from core.wordle_utils import (
-    get_feedback,
     calculate_entropy,
+    filter_wordle_appropriate,
+    filter_words_unique_letters,
+    get_feedback,
     has_unique_letters,
     load_words,
-    filter_words_unique_letters,
-    filter_wordle_appropriate,
 )
-from core.common_utils import DATA_DIR, ProgressReporter, load_word_list_with_fallback
 
 
 def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, float]:
@@ -65,7 +65,7 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
     return freq_score, likelihood_score
 
 
-def find_best_letter_frequency_words(
+def find_best_frequency_words(
     word_list: List[str],
     top_n: int = 10,
     find_lowest: bool = False,
@@ -172,7 +172,7 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (5-LETTER WORDS)")
     print(f"{'='*80}")
 
-    top_words = find_best_letter_frequency_words(
+    top_words = find_best_frequency_words(
         word_list,
         top_n=20,
         find_lowest=False,
@@ -199,7 +199,7 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    top_words = find_best_letter_frequency_words(
+    top_words = find_best_frequency_words(
         word_list,
         top_n=20,
         find_lowest=False,
@@ -226,7 +226,7 @@ def main():
     print("HIGHEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    top_words = find_best_letter_frequency_words(
+    top_words = find_best_frequency_words(
         word_list,
         top_n=20,
         find_lowest=False,
@@ -253,7 +253,7 @@ def main():
     print("LOWEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
-    bottom_words = find_best_letter_frequency_words(
+    bottom_words = find_best_frequency_words(
         word_list,
         top_n=20,
         find_lowest=True,

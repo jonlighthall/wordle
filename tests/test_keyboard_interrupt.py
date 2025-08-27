@@ -3,7 +3,11 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'python'))
+
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src", "python")
+)
+
 
 def test_keyboard_interrupt():
     """Test the KeyboardInterrupt handling behavior."""
@@ -12,14 +16,9 @@ def test_keyboard_interrupt():
     import os
 
     # Setup minimal test environment
-    DATA_DIR = 'data'
-    word_file_path = os.path.join(DATA_DIR, "words_alpha5.txt")
-    word_list = ['crane', 'slate', 'trace', 'stare', 'audio']  # Small test list
+    word_list = ["crane", "slate", "trace", "stare", "audio"]  # Small test list
 
-    algorithms = {
-        'entropy': 'Entropy',
-        'frequency': 'Frequency'
-    }
+    algorithms = {"entropy": "Entropy", "frequency": "Frequency"}
 
     solvers = {}
     for alg_key in algorithms.keys():
@@ -42,6 +41,7 @@ def test_keyboard_interrupt():
         print(f"\n🎯 The target word was: {target.upper()}")
         print("Thanks for playing! 🎯")
         print("✅ KeyboardInterrupt handled correctly - immediate exit with solution!")
+
 
 if __name__ == "__main__":
     test_keyboard_interrupt()

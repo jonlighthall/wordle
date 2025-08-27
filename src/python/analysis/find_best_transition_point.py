@@ -21,11 +21,16 @@ from collections import defaultdict, Counter
 from typing import List, Dict, Tuple
 
 # Add the parent directory to sys.path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from core.wordle_utils import load_words, get_feedback, is_valid_word, calculate_entropy
-from core.common_utils import DATA_DIR, ProgressReporter, load_word_list_with_fallback, get_word_frequency_score
+from core.common_utils import (
+    DATA_DIR,
+    ProgressReporter,
+    load_word_list_with_fallback,
+    get_word_frequency_score,
+)
 
 
 class SimpleWordleSolver:
@@ -46,8 +51,7 @@ class SimpleWordleSolver:
     def filter_words(self, guess: str, feedback: str):
         """Filter possible words based on guess and feedback."""
         self.possible_words = [
-            word for word in self.possible_words
-            if is_valid_word(word, guess, feedback)
+            word for word in self.possible_words if is_valid_word(word, guess, feedback)
         ]
 
     def choose_entropy_guess(self) -> str:
@@ -65,7 +69,9 @@ class SimpleWordleSolver:
         best_word = None
         best_entropy = -1
 
-        search_space = self.possible_words[:min(50, len(self.possible_words))]  # Limit for speed
+        search_space = self.possible_words[
+            : min(50, len(self.possible_words))
+        ]  # Limit for speed
 
         for word in search_space:
             entropy = calculate_entropy(word, self.possible_words)
@@ -101,16 +107,18 @@ class TransitionPointAnalyzer:
         self.word_list = word_list
         self.test_words = test_words
 
-    def test_strategy(self, strategy_name: str, strategy_func: callable, max_test_words: int = 50) -> Dict:
+    def test_strategy(
+        self, strategy_name: str, strategy_func: callable, max_test_words: int = 50
+    ) -> Dict:
         """Test a specific strategy against test words."""
         results = {
-            'strategy': strategy_name,
-            'solved': 0,
-            'failed': 0,
-            'total_attempts': 0,
-            'attempt_distribution': defaultdict(int),
-            'solve_rate': 0.0,
-            'avg_attempts': 0.0
+            "strategy": strategy_name,
+            "solved": 0,
+            "failed": 0,
+            "total_attempts": 0,
+            "attempt_distribution": defaultdict(int),
+            "solve_rate": 0.0,
+            "avg_attempts": 0.0,
         }
 
         test_subset = self.test_words[:max_test_words]
@@ -133,7 +141,7 @@ class TransitionPointAnalyzer:
                 solver.feedbacks.append(feedback)
                 attempts = attempt + 1
 
-                if feedback == 'G' * 5:
+                if feedback == "G" * 5:
                     solved = True
                     break
 
@@ -141,40 +149,46 @@ class TransitionPointAnalyzer:
 
             # Record results
             if solved:
-                results['solved'] += 1
-                results['attempt_distribution'][attempts] += 1
+                results["solved"] += 1
+                results["attempt_distribution"][attempts] += 1
             else:
-                results['failed'] += 1
-                results['attempt_distribution']['failed'] += 1
+                results["failed"] += 1
+                results["attempt_distribution"]["failed"] += 1
 
-            results['total_attempts'] += attempts
+            results["total_attempts"] += attempts
 
         progress_reporter.final_report("words")
 
         # Calculate statistics
         total_tests = len(test_subset)
-        results['solve_rate'] = results['solved'] / total_tests
-        results['avg_attempts'] = results['total_attempts'] / total_tests if total_tests > 0 else 0
-        results['total_tests'] = total_tests
+        results["solve_rate"] = results["solved"] / total_tests
+        results["avg_attempts"] = (
+            results["total_attempts"] / total_tests if total_tests > 0 else 0
+        )
+        results["total_tests"] = total_tests
 
         return results
 
     def create_transition_strategy(self, transition_step: int):
         """Create a strategy that switches from entropy to wordfreq at specified step."""
+
         def strategy_func(solver: SimpleWordleSolver, attempt: int) -> str:
             if attempt < transition_step:
                 return solver.choose_entropy_guess()
             else:
                 return solver.choose_wordfreq_guess()
+
         return strategy_func
 
     def create_count_strategy(self, word_threshold: int):
         """Create a strategy that switches based on remaining word count."""
+
         def strategy_func(solver: SimpleWordleSolver, attempt: int) -> str:
             if len(solver.possible_words) > word_threshold:
                 return solver.choose_entropy_guess()
             else:
                 return solver.choose_wordfreq_guess()
+
         return strategy_func
 
     def run_analysis(self) -> Dict:
@@ -189,14 +203,12 @@ class TransitionPointAnalyzer:
         # Pure strategies
         print("📊 Testing baseline strategies...")
 
-        strategies['pure_entropy'] = self.test_strategy(
-            "Pure Entropy",
-            lambda solver, attempt: solver.choose_entropy_guess()
+        strategies["pure_entropy"] = self.test_strategy(
+            "Pure Entropy", lambda solver, attempt: solver.choose_entropy_guess()
         )
 
-        strategies['pure_wordfreq'] = self.test_strategy(
-            "Pure WordFreq",
-            lambda solver, attempt: solver.choose_wordfreq_guess()
+        strategies["pure_wordfreq"] = self.test_strategy(
+            "Pure WordFreq", lambda solver, attempt: solver.choose_wordfreq_guess()
         )
 
         # Step-based transitions
@@ -204,14 +216,18 @@ class TransitionPointAnalyzer:
         for step in [2, 3, 4]:
             strategy_name = f"Switch at Step {step}"
             strategy_func = self.create_transition_strategy(step)
-            strategies[f'step_{step}'] = self.test_strategy(strategy_name, strategy_func)
+            strategies[f"step_{step}"] = self.test_strategy(
+                strategy_name, strategy_func
+            )
 
         # Count-based transitions
         print("\n📊 Testing count-based transitions...")
         for count in [10, 25, 50]:
             strategy_name = f"Switch at ≤{count} words"
             strategy_func = self.create_count_strategy(count)
-            strategies[f'count_{count}'] = self.test_strategy(strategy_name, strategy_func)
+            strategies[f"count_{count}"] = self.test_strategy(
+                strategy_name, strategy_func
+            )
 
         return strategies
 
@@ -223,20 +239,20 @@ class TransitionPointAnalyzer:
 
         # Sort by solve rate
         sorted_strategies = sorted(
-            strategies.items(),
-            key=lambda x: x[1]['solve_rate'],
-            reverse=True
+            strategies.items(), key=lambda x: x[1]["solve_rate"], reverse=True
         )
 
         print(f"{'Strategy':<25} {'Solve Rate':<12} {'Avg Attempts':<15}")
         print("-" * 55)
 
         for strategy_key, results in sorted_strategies:
-            strategy_name = results['strategy']
-            solve_rate = results['solve_rate']
-            avg_attempts = results['avg_attempts']
+            strategy_name = results["strategy"]
+            solve_rate = results["solve_rate"]
+            avg_attempts = results["avg_attempts"]
 
-            print(f"{strategy_name:<25} {solve_rate*100:>8.1f}%    {avg_attempts:>8.2f}")
+            print(
+                f"{strategy_name:<25} {solve_rate*100:>8.1f}%    {avg_attempts:>8.2f}"
+            )
 
         # Key findings
         print("\n" + "=" * 80)
@@ -244,43 +260,53 @@ class TransitionPointAnalyzer:
         print("=" * 80)
 
         best_strategy = sorted_strategies[0]
-        best_name = best_strategy[1]['strategy']
-        best_solve_rate = best_strategy[1]['solve_rate']
+        best_name = best_strategy[1]["strategy"]
+        best_solve_rate = best_strategy[1]["solve_rate"]
 
         print(f"🏆 Best Strategy: {best_name}")
         print(f"   Solve Rate: {best_solve_rate*100:.1f}%")
         print(f"   Average Attempts: {best_strategy[1]['avg_attempts']:.2f}")
 
         # Compare baselines
-        entropy_results = strategies.get('pure_entropy', {})
-        wordfreq_results = strategies.get('pure_wordfreq', {})
+        entropy_results = strategies.get("pure_entropy", {})
+        wordfreq_results = strategies.get("pure_wordfreq", {})
 
         if entropy_results and wordfreq_results:
-            entropy_rate = entropy_results['solve_rate']
-            wordfreq_rate = wordfreq_results['solve_rate']
+            entropy_rate = entropy_results["solve_rate"]
+            wordfreq_rate = wordfreq_results["solve_rate"]
 
             print("\n📊 Baseline Comparison:")
-            print(f"   Pure Entropy: {entropy_rate*100:.1f}% ({entropy_results['avg_attempts']:.2f} avg)")
-            print(f"   Pure WordFreq: {wordfreq_rate*100:.1f}% ({wordfreq_results['avg_attempts']:.2f} avg)")
+            print(
+                f"   Pure Entropy: {entropy_rate*100:.1f}% ({entropy_results['avg_attempts']:.2f} avg)"
+            )
+            print(
+                f"   Pure WordFreq: {wordfreq_rate*100:.1f}% ({wordfreq_results['avg_attempts']:.2f} avg)"
+            )
 
             if entropy_rate > wordfreq_rate:
-                print(f"   → Entropy leads by {(entropy_rate - wordfreq_rate)*100:.1f} percentage points")
+                print(
+                    f"   → Entropy leads by {(entropy_rate - wordfreq_rate)*100:.1f} percentage points"
+                )
             else:
-                print(f"   → WordFreq leads by {(wordfreq_rate - entropy_rate)*100:.1f} percentage points")
+                print(
+                    f"   → WordFreq leads by {(wordfreq_rate - entropy_rate)*100:.1f} percentage points"
+                )
 
         # Transition recommendations
-        step_strategies = {k: v for k, v in strategies.items() if k.startswith('step_')}
-        count_strategies = {k: v for k, v in strategies.items() if k.startswith('count_')}
+        step_strategies = {k: v for k, v in strategies.items() if k.startswith("step_")}
+        count_strategies = {
+            k: v for k, v in strategies.items() if k.startswith("count_")
+        }
 
         if step_strategies:
-            best_step = max(step_strategies.items(), key=lambda x: x[1]['solve_rate'])
-            step_num = best_step[0].split('_')[1]
+            best_step = max(step_strategies.items(), key=lambda x: x[1]["solve_rate"])
+            step_num = best_step[0].split("_")[1]
             print(f"\n🎯 Best Step Transition: Switch at step {step_num}")
             print(f"   Performance: {best_step[1]['solve_rate']*100:.1f}% solve rate")
 
         if count_strategies:
-            best_count = max(count_strategies.items(), key=lambda x: x[1]['solve_rate'])
-            count_num = best_count[0].split('_')[1]
+            best_count = max(count_strategies.items(), key=lambda x: x[1]["solve_rate"])
+            count_num = best_count[0].split("_")[1]
             print(f"\n📊 Best Count Transition: Switch at ≤{count_num} words")
             print(f"   Performance: {best_count[1]['solve_rate']*100:.1f}% solve rate")
 

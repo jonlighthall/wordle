@@ -14,9 +14,11 @@ from pathlib import Path
 # Import wordfreq for real-world word frequency data
 try:
     from wordfreq import word_frequency
+
     WORDFREQ_AVAILABLE = True
 except ImportError:
     WORDFREQ_AVAILABLE = False
+
 
 # Project structure constants
 def get_repo_root() -> str:
@@ -24,14 +26,16 @@ def get_repo_root() -> str:
     current_file = Path(__file__).resolve()
     # Find the root by looking for specific marker files
     for parent in current_file.parents:
-        if (parent / 'run_wordle.py').exists() or (parent / 'data').exists():
+        if (parent / "run_wordle.py").exists() or (parent / "data").exists():
             return str(parent)
     # Fallback: assume we're in src/python/core and go up 3 levels
     return str(current_file.parents[2])
 
+
 REPO_ROOT = get_repo_root()
-DATA_DIR = os.path.join(REPO_ROOT, 'data')
-LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
+DATA_DIR = os.path.join(REPO_ROOT, "data")
+LOGS_DIR = os.path.join(REPO_ROOT, "logs")
+
 
 def check_wordfreq_availability() -> bool:
     """Check if wordfreq library is available and warn if not."""
@@ -41,20 +45,25 @@ def check_wordfreq_availability() -> bool:
         return False
     return True
 
+
 def format_wordfreq_score(score: float) -> str:
     """Format word frequency score for display.
-    
+
     Returns 'N/A' if wordfreq is not available, otherwise formats the score.
     """
     if not WORDFREQ_AVAILABLE:
         return "N/A"
     return f"{score:.2f}"
 
+
 def is_wordfreq_available() -> bool:
     """Check if wordfreq library is available for external use."""
     return WORDFREQ_AVAILABLE
 
-def get_raw_word_frequency(word: str, lang: str = "en", wordlist: str = "large") -> float:
+
+def get_raw_word_frequency(
+    word: str, lang: str = "en", wordlist: str = "large"
+) -> float:
     """Get raw frequency score from wordfreq library.
 
     Args:
@@ -73,6 +82,7 @@ def get_raw_word_frequency(word: str, lang: str = "en", wordlist: str = "large")
         return word_frequency(word, lang, wordlist=wordlist)
     except Exception:
         return 0.0
+
 
 def scale_word_frequency(raw_freq: float) -> float:
     """Scale raw frequency using log10 transform that preserves relative differences.
@@ -102,7 +112,10 @@ def scale_word_frequency(raw_freq: float) -> float:
     score = max(0.0, log_freq + 8.0)
     return score
 
-def get_word_frequency_score(word: str, lang: str = "en", wordlist: str = "large") -> float:
+
+def get_word_frequency_score(
+    word: str, lang: str = "en", wordlist: str = "large"
+) -> float:
     """Get scaled real-world frequency score for a word.
 
     This is the main function that combines raw frequency retrieval and scaling.
@@ -117,6 +130,7 @@ def get_word_frequency_score(word: str, lang: str = "en", wordlist: str = "large
         return scale_word_frequency(raw_freq)
     else:
         return 0.0  # Word not found
+
 
 class ProgressReporter:
     """Standardized progress reporting for long-running analysis tasks."""
@@ -141,13 +155,18 @@ class ProgressReporter:
         """
         if current_index % self.step_size == 0 or current_index == self.total_items - 1:
             progress_percent = (current_index / self.total_items) * 100
-            print(f"   Progress: {current_index}/{self.total_items} {context} processed ({progress_percent:.1f}%)...")
+            print(
+                f"   Progress: {current_index}/{self.total_items} {context} processed ({progress_percent:.1f}%)..."
+            )
 
     def final_report(self, context: str = "items") -> None:
         """Report completion."""
         print(f"   Completed processing {self.total_items} {context} (100.0%).")
 
-def load_word_list_with_fallback(primary_file: str, fallback_files: Optional[List[str]] = None) -> List[str]:
+
+def load_word_list_with_fallback(
+    primary_file: str, fallback_files: Optional[List[str]] = None
+) -> List[str]:
     """Load word list with fallback options and standardized error handling.
 
     Args:
@@ -177,13 +196,16 @@ def load_word_list_with_fallback(primary_file: str, fallback_files: Optional[Lis
     print(f"❌ Error: No valid word files found. Tried: {', '.join(files_to_try)}")
     return []
 
+
 def get_standard_word_file() -> str:
     """Get the standard word file name used across the project."""
     return "words_alpha5.txt"
 
+
 def get_test_word_file() -> str:
     """Get the test word file name used for smaller datasets."""
     return "words_alpha5_100.txt"
+
 
 def format_frequency_for_display(raw_freq: float) -> str:
     """Format raw frequency for consistent display across the project."""
@@ -192,6 +214,7 @@ def format_frequency_for_display(raw_freq: float) -> str:
     else:
         return f"{raw_freq:.6f}"
 
+
 def format_log10_for_display(raw_freq: float) -> str:
     """Format log10 value for consistent display across the project."""
     if raw_freq > 0:
@@ -199,6 +222,7 @@ def format_log10_for_display(raw_freq: float) -> str:
         return f"{log10_val:.2f}"
     else:
         return "N/A"
+
 
 def setup_analysis_environment() -> tuple:
     """Set up common environment for analysis scripts.

@@ -12,9 +12,10 @@ from datetime import datetime
 from typing import Tuple, List, Set
 
 # Add the src/python directory to the path so we can import modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'python'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src", "python"))
 
 from core.wordle_utils import load_words, save_words_to_file
+
 
 def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int]:
     """
@@ -62,7 +63,9 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
     if dry_run:
         if duplicates_found > 0 or not was_sorted:
             sort_msg = "" if was_sorted else " + sorting"
-            print(f"🔍 Would clean {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates{sort_msg})")
+            print(
+                f"🔍 Would clean {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates{sort_msg})"
+            )
         else:
             print(f"✅ {filepath}: {original_count} words (no changes needed)")
         return original_count, cleaned_count, duplicates_found
@@ -83,7 +86,9 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
                 return original_count, original_count, 0
 
             sort_msg = "" if was_sorted else " + sorted"
-            print(f"✅ Cleaned {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates removed{sort_msg})")
+            print(
+                f"✅ Cleaned {filepath}: {original_count} → {cleaned_count} words ({duplicates_found} duplicates removed{sort_msg})"
+            )
 
         except Exception as e:
             print(f"❌ Error cleaning {filepath}: {e}")
@@ -92,6 +97,7 @@ def clean_word_file(filepath: str, dry_run: bool = False) -> Tuple[int, int, int
         print(f"✅ {filepath}: {original_count} words (no changes needed)")
 
     return original_count, cleaned_count, duplicates_found
+
 
 def main():
     """Main cleanup function with enhanced options."""
@@ -102,11 +108,20 @@ def main():
 
     # Add command line argument support
     import argparse
-    parser = argparse.ArgumentParser(description='Clean word files by removing duplicates and sorting alphabetically')
-    parser.add_argument('--dry-run', action='store_true',
-                       help='Show what would be changed without making changes')
-    parser.add_argument('--files', nargs='+',
-                       help='Specific files to clean (default: all standard files)')
+
+    parser = argparse.ArgumentParser(
+        description="Clean word files by removing duplicates and sorting alphabetically"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed without making changes",
+    )
+    parser.add_argument(
+        "--files",
+        nargs="+",
+        help="Specific files to clean (default: all standard files)",
+    )
 
     # Parse args if called from command line, otherwise use defaults
     if len(sys.argv) > 1:
@@ -129,32 +144,42 @@ def main():
 
         if choice == "3":
             print("\nAvailable files:")
-            available_files = ["words_past5_date.txt", "words_missing.txt", "words_challenging.txt"]
+            available_files = [
+                "words_past5_date.txt",
+                "words_missing.txt",
+                "words_challenging.txt",
+            ]
             for i, filename in enumerate(available_files, 1):
                 print(f"{i}. {filename}")
 
             selections = input("\nEnter file numbers (e.g., 1,3): ").strip()
             if selections:
                 try:
-                    indices = [int(x.strip()) - 1 for x in selections.split(',')]
-                    args.files = [available_files[i] for i in indices if 0 <= i < len(available_files)]
+                    indices = [int(x.strip()) - 1 for x in selections.split(",")]
+                    args.files = [
+                        available_files[i]
+                        for i in indices
+                        if 0 <= i < len(available_files)
+                    ]
                 except (ValueError, IndexError):
                     print("Invalid selection, using all files.")
 
     # Define the files to check
-    data_dir = Path(__file__).parent / 'data'
+    data_dir = Path(__file__).parent / "data"
 
     if args.files:
-        files_to_check = [(f, f.replace('_', ' ').replace('.txt', '').title()) for f in args.files]
+        files_to_check = [
+            (f, f.replace("_", " ").replace(".txt", "").title()) for f in args.files
+        ]
     else:
         files_to_check = [
             ("words_past5_date.txt", "Past Wordle words"),
             ("words_missing.txt", "Failed/missing words"),
-            ("words_challenging.txt", "Challenging words")
+            ("words_challenging.txt", "Challenging words"),
         ]
 
     if args.dry_run:
-        print(f"\n🔍 DRY RUN MODE - No changes will be made")
+        print("\n🔍 DRY RUN MODE - No changes will be made")
         print("=" * 50)
 
     total_original = 0
@@ -178,19 +203,24 @@ def main():
     print(f"Files processed: {len(files_to_check)}")
     print(f"Total words processed: {total_original:,}")
     print(f"Total words after cleanup: {total_cleaned:,}")
-    print(f"Total duplicates {'found' if args.dry_run else 'removed'}: {total_duplicates:,}")
+    print(
+        f"Total duplicates {'found' if args.dry_run else 'removed'}: {total_duplicates:,}"
+    )
 
     if total_duplicates > 0:
         percentage_reduction = (total_duplicates / total_original) * 100
         print(f"Space savings: {percentage_reduction:.1f}%")
 
         if not args.dry_run:
-            print(f"💾 Backup files created for modified files")
-            print(f"✨ Cleanup completed! Removed {total_duplicates:,} duplicate words.")
+            print("💾 Backup files created for modified files")
+            print(
+                f"✨ Cleanup completed! Removed {total_duplicates:,} duplicate words."
+            )
         else:
-            print(f"🔍 Run without --dry-run to apply these changes")
+            print("🔍 Run without --dry-run to apply these changes")
     else:
         print("✨ All files were already clean - no duplicates found!")
+
 
 if __name__ == "__main__":
     main()
