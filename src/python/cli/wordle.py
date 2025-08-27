@@ -8,6 +8,14 @@ from multiprocessing import Pool, cpu_count
 from functools import partial
 from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
 
+# Import wordfreq for real-world word frequency data
+try:
+    from wordfreq import word_frequency
+    WORDFREQ_AVAILABLE = True
+except ImportError:
+    WORDFREQ_AVAILABLE = False
+    print("Warning: wordfreq not available. Install with 'pip install wordfreq' for improved scoring.")
+
 # Get the repository root directory (3 levels up from this file)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 DATA_DIR = os.path.join(REPO_ROOT, 'data')
@@ -22,6 +30,46 @@ DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallba
 
 # Popular Wordle starting words that users often choose
 POPULAR_WORDS = ["crane", "slate", "trace", "stare", "audio", "ratio", "penis"]
+
+def get_word_frequency_score(word: str, lang: str = "en") -> float:
+    """Get real-world frequency score for a word using wordfreq library.
+
+    Returns a score from 0.0 to 1.0 where 1.0 is most common.
+    If wordfreq is not available, returns 0.5 as neutral score.
+    """
+    if not WORDFREQ_AVAILABLE:
+        return 0.5
+
+    try:
+        # Get frequency (ranges from ~1e-7 for very rare words to ~0.01 for very common)
+        freq = word_frequency(word, lang)
+
+        # Scale to 0-1 range using log scale to handle the wide range
+        # Most common words are around 1e-2, rare words around 1e-7
+        if freq > 0:
+            # Use log scale: log10(1e-7) = -7, log10(1e-2) = -2
+            log_freq = math.log10(freq)
+            # Scale from [-7, -2] to [0, 1]
+            score = max(0.0, min(1.0, (log_freq + 7) / 5))
+            return score
+        else:
+            return 0.0  # Word not found in frequency data
+    except Exception:
+        return 0.5  # Fallback score
+
+def score_words_by_frequency(words: List[str]) -> List[Tuple[str, float]]:
+    """Score a list of words by their real-world frequency.
+
+    Returns list of (word, frequency_score) tuples sorted by frequency score descending.
+    """
+    scored_words = []
+    for word in words:
+        score = get_word_frequency_score(word)
+        scored_words.append((word, score))
+
+    # Sort by frequency score descending (most common first)
+    scored_words.sort(key=lambda x: x[1], reverse=True)
+    return scored_words
 
 # ANSI color codes for terminal output
 class Colors:
@@ -1028,11 +1076,15 @@ def calculate_word_scores(word: str, possible_words: List[str], search_space: Li
     # Calculate information score
     info_score = get_word_information_score(word, possible_words)
 
+    # Calculate real-world frequency score
+    wordfreq_score = get_word_frequency_score(word)
+
     return {
         'entropy': entropy,
         'frequency': freq_score,
         'likelihood': likelihood_score,
-        'information': info_score
+        'information': info_score,
+        'wordfreq': wordfreq_score
     }
 
 def get_valid_popular_words(possible_words: List[str], guessed_words: List[str]) -> List[str]:
@@ -1335,13 +1387,21 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     'source': 'popular'
                 })
 
-        # Sort all suggestions by frequency score (descending)
-        all_suggestions.sort(key=lambda x: x['scores']['frequency'], reverse=True)
+        # Sort all suggestions by composite score (wordfreq + frequency, if available)
+        def get_sort_key(suggestion):
+            scores = suggestion['scores']
+            # Use wordfreq as primary, frequency as secondary if available
+            wordfreq_score = scores.get('wordfreq', 0)
+            frequency_score = scores.get('frequency', 0) / 1000.0 if scores.get('frequency', 0) > 0 else 0
+            # Weighted combination: 70% real-world frequency, 30% letter frequency
+            return wordfreq_score * 0.7 + frequency_score * 0.3
+
+        all_suggestions.sort(key=get_sort_key, reverse=True)
 
         # Display consolidated and sorted suggestions
-        print("🎯 Word Suggestions (sorted by frequency score):")
-        print(f"     {'Word':<6} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5}")
-        print("-" * 69)
+        print("🎯 Word Suggestions (sorted by real-world frequency):")
+        print(f"     {'Word':<6} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'WF':<5}")
+        print("-" * 76)
 
         for i, suggestion in enumerate(all_suggestions, 1):
             word = suggestion['word']
@@ -1350,7 +1410,8 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
             print(f"{i:2d}. {word.upper():<6} {word_type:<15} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
-                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f}")
+                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} "
+                  f"{scores.get('wordfreq', 0):<5.2f}")
 
         total_choices = len(all_suggestions)
 
