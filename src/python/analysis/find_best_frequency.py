@@ -51,7 +51,7 @@ def calculate_frequency_score(word: str, word_list: List[str]) -> Tuple[int, flo
 
     # Create word from most likely letters and check if it exists
     most_likely_word = ''.join(most_likely_letters)
-    print(f"\nWord formed from most likely letters: '{most_likely_word}'")
+    print(f"\nPattern formed from most likely letters: '{most_likely_word}'")
     if most_likely_word in word_list:
         print(f"✓ '{most_likely_word}' is a valid word in the list!")
     else:
@@ -103,7 +103,7 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
     for i, word in enumerate(word_list):
         if i % step_size == 0 or i == total_words - 1:
             progress_percent = (i / total_words) * 100
-            print(f"Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
+            print(f"   Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
 
         # OPTIMIZED: Simple arithmetic using pre-calculated frequencies
         freq_score = sum(freq[i][word[i]] for i in range(word_length))
@@ -116,13 +116,14 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
             entropy = 0.0  # Placeholder - will calculate only for top words if needed
 
         word_scores.append((word, freq_score, likelihood_score, entropy))
+    print(f"Completed processing {len(word_list)} words (100.0%).")
 
     # Sort by frequency score (lowest first if find_lowest, highest first otherwise)
     word_scores.sort(key=lambda x: x[1], reverse=not find_lowest)
 
     # If entropy wasn't calculated upfront, calculate it only for the top words
     if not calculate_entropy_upfront:
-        print(f"Calculating entropy for top {top_n} words...")
+        print(f"\nCalculating entropy for top {top_n} words...")
         top_words = word_scores[:top_n]
         for i, (word, freq_score, likelihood_score, _) in enumerate(top_words):
             entropy = calculate_entropy(word, word_list)
