@@ -44,7 +44,7 @@ def get_raw_frequency(word: str, lang: str = "en", wordlist: str = "large") -> f
 
 
 def scale_frequency_score(raw_freq: float) -> float:
-    """Scale raw frequency to 0-1 range using logarithmic scaling.
+    """Scale raw frequency using log10 transform that preserves relative differences.
 
     The wordfreq library returns frequencies in a wide range:
     - Very common words: ~1e-2 (0.01)
@@ -52,20 +52,23 @@ def scale_frequency_score(raw_freq: float) -> float:
     - Uncommon words: ~1e-5 to 1e-6 (0.00001 to 0.000001)
     - Very rare words: ~1e-7 or less
 
-    We use log10 scaling to map this range to [0, 1]:
-    - log10(1e-2) = -2  → maps to 1.0 (most common)
-    - log10(1e-7) = -7  → maps to 0.0 (least common)
+    We use a linear transform of log10 to preserve meaningful differences:
+    - Words not found: score = 0.0
+    - log10(1e-8) = -8  → score = 1.0 (baseline rare)
+    - log10(1e-7) = -7  → score = 2.0
+    - log10(1e-6) = -6  → score = 3.0
+    - log10(1e-5) = -5  → score = 4.0
+    - log10(1e-2) = -2  → score = 7.0 (most common)
+
+    Each unit difference in score = 10x difference in frequency.
+    A difference of 3 = 1000x difference in frequency.
     """
     if raw_freq <= 0:
         return 0.0
 
-    # Use log10 to handle the wide range
+    # Use log10 and shift so -8 maps to 1.0
     log_freq = math.log10(raw_freq)
-
-    # Scale from expected range [-7, -2] to [0, 1]
-    # Formula: (log_freq - min_log) / (max_log - min_log)
-    # Where min_log = -7, max_log = -2
-    score = max(0.0, min(1.0, (log_freq + 7) / 5))
+    score = max(0.0, log_freq + 8.0)
     return score
 
 
@@ -105,15 +108,15 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
         # Track frequency distribution
         if raw_freq == 0.0:  # Use raw_freq to match words_not_found logic
             frequency_distribution['zero'] += 1
-        elif scaled_score < 0.1:
+        elif scaled_score < 2.0:  # 1.0-2.0: log10(-8) to log10(-7)
             frequency_distribution['very_rare'] += 1
-        elif scaled_score < 0.3:
+        elif scaled_score < 4.0:  # 2.0-4.0: log10(-7) to log10(-5)
             frequency_distribution['rare'] += 1
-        elif scaled_score < 0.5:
+        elif scaled_score < 5.0:  # 4.0-5.0: log10(-5) to log10(-4)
             frequency_distribution['uncommon'] += 1
-        elif scaled_score < 0.7:
+        elif scaled_score < 6.0:  # 5.0-6.0: log10(-4) to log10(-3)
             frequency_distribution['common'] += 1
-        else:
+        else:  # 6.0+: log10(-3) and higher
             frequency_distribution['very_common'] += 1
 
     print(f"   Completed processing {len(word_list)} words (100.0%).")
@@ -129,11 +132,11 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
     least_common = words_with_freq[-50:]  # Bottom 50 with actual frequencies
 
     print(f"\n📈 Frequency Distribution:")
-    print(f"   Very Common (0.7-1.0): {frequency_distribution['very_common']:>5} words ({frequency_distribution['very_common']/total_words*100:>5.1f}%)")
-    print(f"   Common (0.5-0.7):      {frequency_distribution['common']:>5} words ({frequency_distribution['common']/total_words*100:>5.1f}%)")
-    print(f"   Uncommon (0.3-0.5):    {frequency_distribution['uncommon']:>5} words ({frequency_distribution['uncommon']/total_words*100:>5.1f}%)")
-    print(f"   Rare (0.1-0.3):        {frequency_distribution['rare']:>5} words ({frequency_distribution['rare']/total_words*100:>5.1f}%)")
-    print(f"   Very Rare (0.0-0.1):   {frequency_distribution['very_rare']:>5} words ({frequency_distribution['very_rare']/total_words*100:>5.1f}%)")
+    print(f"   Very Common (6.0+):    {frequency_distribution['very_common']:>5} words ({frequency_distribution['very_common']/total_words*100:>5.1f}%)")
+    print(f"   Common (5.0-6.0):      {frequency_distribution['common']:>5} words ({frequency_distribution['common']/total_words*100:>5.1f}%)")
+    print(f"   Uncommon (4.0-5.0):    {frequency_distribution['uncommon']:>5} words ({frequency_distribution['uncommon']/total_words*100:>5.1f}%)")
+    print(f"   Rare (2.0-4.0):        {frequency_distribution['rare']:>5} words ({frequency_distribution['rare']/total_words*100:>5.1f}%)")
+    print(f"   Very Rare (1.0-2.0):   {frequency_distribution['very_rare']:>5} words ({frequency_distribution['very_rare']/total_words*100:>5.1f}%)")
     print(f"   Not Found (0.0):       {frequency_distribution['zero']:>5} words ({frequency_distribution['zero']/total_words*100:>5.1f}%)")
 
     # Report words not found
@@ -162,16 +165,18 @@ def print_word_analysis(words: List[Tuple[str, float, float]], title: str, max_d
 
     for i, (word, raw_freq, scaled_score) in enumerate(words[:max_display], 1):
         # Classify the word
-        if scaled_score >= 0.7:
+        if scaled_score >= 6.0:
             classification = "Very Common"
-        elif scaled_score >= 0.5:
+        elif scaled_score >= 5.0:
             classification = "Common"
-        elif scaled_score >= 0.3:
+        elif scaled_score >= 4.0:
             classification = "Uncommon"
-        elif scaled_score >= 0.1:
+        elif scaled_score >= 2.0:
             classification = "Rare"
-        else:
+        elif scaled_score > 0.0:
             classification = "Very Rare"
+        else:
+            classification = "Not Found"
 
         # Format raw frequency in scientific notation if very small
         if raw_freq < 1e-4:
@@ -221,14 +226,19 @@ def main():
     print("=" * 70)
     print("The wordfreq library provides raw frequencies from real text corpora.")
     print("Using 'large' dataset (~321k words) for better coverage of uncommon words.")
-    print("Raw frequencies range from ~1e-7 (very rare) to ~1e-2 (very common).")
+    print("Raw frequencies range from ~1e-8 (very rare) to ~1e-2 (very common).")
     print()
-    print("Scaling formula: score = max(0, min(1, (log10(freq) + 7) / 5))")
-    print("  • log10(1e-2) = -2  →  (-2 + 7) / 5 = 1.0  (most common)")
-    print("  • log10(1e-7) = -7  →  (-7 + 7) / 5 = 0.0  (least common)")
+    print("Scaling formula: score = max(0, log10(freq) + 8)")
+    print("  • Words not found:    score = 0.0")
+    print("  • log10(1e-8) = -8  → score = 1.0  (baseline rare)")
+    print("  • log10(1e-7) = -7  → score = 2.0  (10x more common)")
+    print("  • log10(1e-6) = -6  → score = 3.0  (100x more common)")
+    print("  • log10(1e-5) = -5  → score = 4.0  (1,000x more common)")
+    print("  • log10(1e-2) = -2  → score = 7.0  (1,000,000x more common)")
     print()
-    print("This logarithmic scaling captures the intuitive difference between")
-    print("common words (like 'about', 'house') and rare words (like 'xylem', 'nixie').")
+    print("Each unit increase in score = 10x increase in frequency.")
+    print("A difference of 3 units = 1,000x difference in frequency.")
+    print("This preserves the meaningful logarithmic relationships between words.")
 
     # Show some example scalings
     print(f"\n📊 EXAMPLE SCALING COMPARISONS")
