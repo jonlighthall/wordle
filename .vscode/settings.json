@@ -2,5 +2,16 @@
     "sonarlint.connectedMode.project": {
         "connectionId": "jonlighthall",
         "projectKey": "jonlighthall_wordle"
+    },
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": ["--line-length=88"],
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": null,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
     }
 }

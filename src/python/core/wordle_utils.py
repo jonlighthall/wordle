@@ -14,27 +14,29 @@ def get_feedback(guess: str, target: str) -> str:
     Returns a string of 'G' (green), 'Y' (yellow), 'X' (gray)."""
     # Validate input lengths
     if len(guess) != len(target):
-        raise ValueError(f"Length mismatch: guess='{guess}' ({len(guess)} chars), target='{target}' ({len(target)} chars)")
+        raise ValueError(
+            f"Length mismatch: guess='{guess}' ({len(guess)} chars), target='{target}' ({len(target)} chars)"
+        )
 
     word_length = len(guess)
-    feedback = ['X'] * word_length
+    feedback = ["X"] * word_length
     target_chars = list(target)
 
     # First pass: Mark green (correct letter, correct position)
     for i in range(word_length):
         if guess[i] == target[i]:
-            feedback[i] = 'G'
+            feedback[i] = "G"
             target_chars[i] = None  # Remove matched letter
 
     # Second pass: Mark yellow (correct letter, wrong position)
     for i in range(word_length):
-        if feedback[i] == 'G':
+        if feedback[i] == "G":
             continue
         if guess[i] in target_chars:
-            feedback[i] = 'Y'
+            feedback[i] = "Y"
             target_chars[target_chars.index(guess[i])] = None
 
-    return ''.join(feedback)
+    return "".join(feedback)
 
 
 def calculate_entropy(guess: str, possible_words: List[str]) -> float:
@@ -66,58 +68,83 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
         return False
 
     word_counter = Counter(word)
+    required_letters, position_requirements, position_forbidden = _analyze_feedback(
+        guess, feedback
+    )
 
-    # Count how many of each letter should be in the target word
+    return (
+        _check_position_requirements(word, position_requirements)
+        and _check_position_forbidden(word, position_forbidden)
+        and _check_required_letters(word_counter, required_letters)
+        and _check_gray_letters(word_counter, guess, feedback, required_letters)
+    )
+
+
+def _analyze_feedback(guess: str, feedback: str) -> tuple:
+    """Analyze guess and feedback to extract requirements."""
     required_letters = Counter()
     position_requirements = {}  # position -> required letter
-    position_forbidden = {}     # position -> set of forbidden letters
+    position_forbidden = {}  # position -> set of forbidden letters
 
     for i, (g_char, f_char) in enumerate(zip(guess, feedback)):
-        if f_char == 'G':  # Green: correct letter, correct position
+        if f_char == "G":  # Green: correct letter, correct position
             required_letters[g_char] += 1
             position_requirements[i] = g_char
-        elif f_char == 'Y':  # Yellow: correct letter, wrong position
+        elif f_char == "Y":  # Yellow: correct letter, wrong position
             required_letters[g_char] += 1
             if i not in position_forbidden:
                 position_forbidden[i] = set()
             position_forbidden[i].add(g_char)
-        else:  # Gray: letter not in word at all, OR no more instances needed
-            # This is tricky - gray means either:
-            # 1. Letter is not in the word at all
-            # 2. Letter is in the word, but we already found all instances via G/Y
-            pass
 
+    return required_letters, position_requirements, position_forbidden
+
+
+def _check_position_requirements(word: str, position_requirements: dict) -> bool:
     # Check position requirements (Green letters)
+    """Check if word meets position requirements (Green letters)."""
     for pos, required_char in position_requirements.items():
         if word[pos] != required_char:
             return False
+    return True
 
+
+def _check_position_forbidden(word: str, position_forbidden: dict) -> bool:
     # Check position forbidden (Yellow letters can't be in their guessed position)
+    """Check if word violates position forbidden rules (Yellow letters)."""
     for pos, forbidden_chars in position_forbidden.items():
         if word[pos] in forbidden_chars:
             return False
+    return True
 
+
+def _check_required_letters(word_counter: Counter, required_letters: Counter) -> bool:
     # Check that word contains at least the required letters
+    """Check if word contains at least the required letters."""
     for letter, min_count in required_letters.items():
         if word_counter[letter] < min_count:
             return False
+    return True
 
+
+def _check_gray_letters(
+    word_counter: Counter, guess: str, feedback: str, required_letters: Counter
+) -> bool:
     # Handle gray letters - they indicate no additional instances beyond what we found
-    for i, (g_char, f_char) in enumerate(zip(guess, feedback)):
-        if f_char == 'X':  # Gray
+    """Check gray letters have correct counts."""
+    for g_char, f_char in zip(guess, feedback):
+        if f_char == "X":  # Gray
             # Count how many we should have found via green/yellow
             expected_count = required_letters.get(g_char, 0)
             actual_count = word_counter.get(g_char, 0)
             if actual_count != expected_count:
                 return False
-
     return True
 
 
 def load_words(filename: str = "words_alpha5.txt") -> List[str]:
     """Load words from a file."""
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, "r", encoding="utf-8") as f:
             words = []
             for line in f.readlines():
                 word = line.strip().lower()
@@ -137,11 +164,11 @@ def is_wordle_appropriate(word: str) -> bool:
     # Simple filtering - just exclude plurals and past tense verbs
 
     # Filter out plurals (words ending in 's')
-    if word.endswith('s'):
+    if word.endswith("s"):
         return False
 
     # Filter out past tense verbs (words ending in 'ed')
-    if word.endswith('ed'):
+    if word.endswith("ed"):
         return False
 
     return True
@@ -184,9 +211,9 @@ def remove_word_from_list(word_list: List[str], word_to_remove: str) -> List[str
 def save_words_to_file(filename: str, words: List[str]) -> bool:
     """Save words to a file, one per line."""
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             for word in words:
-                f.write(word + '\n')
+                f.write(word + "\n")
         return True
     except (OSError, IOError) as e:
         print(f"Error saving words to {filename}: {e}")
@@ -229,7 +256,9 @@ def get_word_information_score(word: str, possible_words: List[str]) -> float:
     return score
 
 
-def get_optimal_endgame_guess(possible_words: List[str], word_list: List[str]) -> str | None:
+def get_optimal_endgame_guess(
+    possible_words: List[str], word_list: List[str]
+) -> str | None:
     """Get optimal guess when few possibilities remain."""
     if len(possible_words) <= 1:
         return possible_words[0] if possible_words else None
@@ -244,7 +273,9 @@ def get_optimal_endgame_guess(possible_words: List[str], word_list: List[str]) -
         best_score = -1
 
         # Consider both possible words and some exploration words
-        candidates = list(set(possible_words + [w for w in word_list if has_unique_letters(w)][:50]))
+        candidates = list(
+            set(possible_words + [w for w in word_list if has_unique_letters(w)][:50])
+        )
 
         for word in candidates:
             entropy = calculate_entropy(word, possible_words)
