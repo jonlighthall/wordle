@@ -24,8 +24,8 @@ LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
 # Default starting words for algorithms
 # To change the default starting words, modify these constants:
 DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
-DEFAULT_FREQUENCY_STARTER = "cares"    # Used by frequency algorithm and random fallback
-DEFAULT_INFORMATION_STARTER = "enzym"  # Used by information algorithm (balances frequency and diversity)
+DEFAULT_LETTFREQ_STARTER = "cares"    # Used by letter frequency algorithm and random fallback
+DEFAULT_INFORMATION_STARTER = "enzym"  # Used by information algorithm (balances letter frequency and diversity)
 DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
 
 # Popular Wordle starting words that users often choose
@@ -121,10 +121,10 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
             "general": DEFAULT_ENTROPY_STARTER,      # Best overall entropy and proven track record
             "aggressive": "slate",   # Maximum elimination for difficult words
             "balanced": "adieu",     # Good balance covering vowels
-            "conservative": DEFAULT_FREQUENCY_STARTER  # Current best performing starter
+            "conservative": DEFAULT_LETTFREQ_STARTER  # Current best performing starter
         },
         "frequency": {
-            "general": DEFAULT_FREQUENCY_STARTER,      # Best frequency-based performance
+            "general": DEFAULT_LETTFREQ_STARTER,      # Best letter frequency-based performance
             "common": "cares",       # Focus on most common letters
             "balanced": "arose",     # Balance of frequency and position
             "vowel_focus": "adieu"   # When expecting vowel-heavy targets
@@ -403,7 +403,7 @@ class WordleSolver:
                 return random.choice(isogram_candidates)
 
         if len(self.guesses) == 0:
-            return DEFAULT_FREQUENCY_STARTER
+            return DEFAULT_LETTFREQ_STARTER
         return random.choice(self.possible_words)
 
     def choose_guess_entropy(self, use_optimal_start: bool = False) -> str:
@@ -548,7 +548,7 @@ class WordleSolver:
         # Handle first guess with different strategies
         if len(self.guesses) == 0:
             if start_strategy == "fixed":
-                return DEFAULT_FREQUENCY_STARTER  # Optimal frequency-based starting word
+                return DEFAULT_LETTFREQ_STARTER  # Optimal letter frequency-based starting word
             elif start_strategy == "random":
                 chosen = random.choice(self.word_list)
                 print(f"    Random first guess: '{chosen}'")
@@ -1130,7 +1130,7 @@ def interactive_mode():
     # Initialize multiple solvers (one for each algorithm)
     algorithms = {
         'entropy': 'Entropy',
-        'frequency': 'Frequency',
+        'frequency': 'Letter-Frequency',
         'information': 'Information',
         'ultra_efficient': 'Ultra-Efficient',
         'adaptive_hybrid': 'Adaptive-Hybrid'
@@ -1387,28 +1387,28 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     'source': 'popular'
                 })
 
-        # Sort all suggestions by composite score (wordfreq + frequency, if available)
+        # Sort all suggestions by composite score (wordfreq + letter frequency, if available)
         def get_sort_key(suggestion):
             scores = suggestion['scores']
-            # Use wordfreq as primary, frequency as secondary if available
+            # Use wordfreq as primary, letter frequency as secondary if available
             wordfreq_score = scores.get('wordfreq', 0)
-            frequency_score = scores.get('frequency', 0) / 1000.0 if scores.get('frequency', 0) > 0 else 0
+            lettfreq_score = scores.get('frequency', 0) / 1000.0 if scores.get('frequency', 0) > 0 else 0
             # Weighted combination: 70% real-world frequency, 30% letter frequency
-            return wordfreq_score * 0.7 + frequency_score * 0.3
+            return wordfreq_score * 0.7 + lettfreq_score * 0.3
 
         all_suggestions.sort(key=get_sort_key, reverse=True)
 
         # Display consolidated and sorted suggestions
         print("🎯 Word Suggestions (sorted by real-world frequency):")
-        print(f"     {'Word':<6} {'Type':<15} {'Entropy':<7} {'Freq':<5} {'Like':<5} {'Info':<5} {'WF':<5}")
-        print("-" * 76)
+        print(f"     {'Word':<6} {'Type':<18} {'Entropy':<7} {'LtFq':<5} {'Like':<5} {'Info':<5} {'WF':<5}")
+        print("-" * 79)
 
         for i, suggestion in enumerate(all_suggestions, 1):
             word = suggestion['word']
             word_type = suggestion['type']
             scores = suggestion['scores']
 
-            print(f"{i:2d}. {word.upper():<6} {word_type:<15} "
+            print(f"{i:2d}. {word.upper():<6} {word_type:<18} "
                   f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
                   f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} "
                   f"{scores.get('wordfreq', 0):<5.2f}")

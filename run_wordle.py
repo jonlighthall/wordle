@@ -17,7 +17,7 @@ def main():
     print("1. Interactive Wordle Solver")
     print("2. Automated Testing")
     print("3. Find Best Entropy Words")
-    print("4. Find Best Frequency Words")
+    print("4. Find Best Letter Frequency Words")
     print("5. Find Best Real-World Frequency Words")
     print("6. Run Tests")
     print("7. Clean Word Files (remove duplicates)")
@@ -43,8 +43,8 @@ def main():
         from src.python.analysis.find_best_entropy import main as entropy_analysis
         entropy_analysis()
     elif choice == "4":
-        from src.python.analysis.find_best_frequency import main as frequency_analysis
-        frequency_analysis()
+        from src.python.analysis.find_best_frequency import main as lettfreq_analysis
+        lettfreq_analysis()
     elif choice == "5":
         from src.python.analysis.find_best_wordfreq import main as wordfreq_analysis
         wordfreq_analysis()

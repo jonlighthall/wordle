@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """
-Script to find the words with the highest and lowest frequency scores from the word list.
+Script to find the words with the highest and low    print(f"Calculating highest letter frequency scores for {len(word_list)} words...")
+
+    # OPTIMIZED: Calculate frequencies once for the entire word list
+    word_length = 5
+    freq = [Counter() for _ in range(word_length)]
+
+    for word in word_list:
+        for i, char in enumerate(word):
+            freq[i][char] += 1
+
+    print(f"Letter frequency analysis complete. Now scoring {len(word_list)} words...")frequency scores from the word list.
 This calculates the letter frequency for each position and scores words accordingly.
 """
 
@@ -131,9 +141,9 @@ def main():
     # Print most likely letters by position
     calculate_frequency_score(word_list[0], word_list)
 
-    # Find highest frequency words
+    # Find highest letter frequency words
     print(f"\n{'='*80}")
-    print("HIGHEST FREQUENCY ANALYSIS (5-LETTER WORDS)")
+    print("HIGHEST LETTER FREQUENCY ANALYSIS (5-LETTER WORDS)")
     print(f"{'='*80}")
 
     top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
@@ -147,9 +157,9 @@ def main():
 
     print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
 
-    # Find highest frequency words (unique letters only)
+    # Find highest letter frequency words (unique letters only)
     print(f"\n{'='*80}")
-    print("HIGHEST FREQUENCY ANALYSIS (UNIQUE LETTERS)")
+    print("HIGHEST LETTER FREQUENCY ANALYSIS (UNIQUE LETTERS)")
     print(f"{'='*80}")
 
     top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
@@ -163,9 +173,9 @@ def main():
 
     print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
 
-    # Find highest frequency words (Wordle-appropriate, unique letters only)
+    # Find highest letter frequency words (Wordle-appropriate, unique letters only)
     print(f"\n{'='*80}")
-    print("HIGHEST FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
+    print("HIGHEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
     top_words = find_best_frequency_words(word_list, top_n=20, find_lowest=False,
@@ -179,9 +189,9 @@ def main():
 
     print(f"\nBest word for highest frequency: '{top_words[0][0]}' with score {top_words[0][1]} (likelihood {top_words[0][2]:.4f})")
 
-    # Find lowest frequency words (Wordle-appropriate, unique letters only)
+    # Find lowest letter frequency words (Wordle-appropriate, unique letters only)
     print(f"\n{'='*80}")
-    print("LOWEST FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
+    print("LOWEST LETTER FREQUENCY ANALYSIS (WORDLE-APPROPRIATE, UNIQUE LETTERS)")
     print(f"{'='*80}")
 
     bottom_words = find_best_frequency_words(word_list, top_n=20, find_lowest=True,
