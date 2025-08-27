@@ -36,13 +36,14 @@ def get_word_frequency_score(word: str, lang: str = "en") -> float:
 
     Returns a score from 0.0 to 1.0 where 1.0 is most common.
     If wordfreq is not available, returns 0.5 as neutral score.
+    Uses 'large' wordlist (~321k words) for better coverage.
     """
     if not WORDFREQ_AVAILABLE:
         return 0.5
 
     try:
         # Get frequency (ranges from ~1e-7 for very rare words to ~0.01 for very common)
-        freq = word_frequency(word, lang)
+        freq = word_frequency(word, lang, wordlist="large")
 
         # Scale to 0-1 range using log scale to handle the wide range
         # Most common words are around 1e-2, rare words around 1e-7
