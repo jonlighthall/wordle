@@ -65,9 +65,13 @@ def find_best_information_words(word_list: List[str], top_n: int = 10, find_lowe
     # Only calculate entropy for top candidates if explicitly requested
     if calculate_entropy_upfront:
         print(f"Calculating entropy for top {len(top_candidates)} candidates...")
+        total_candidates = len(top_candidates)
+        step_size = max(1, total_candidates // 10)  # Calculate step size for 10 progress reports
+
         for i, (word, info_score, likelihood_score, _) in enumerate(top_candidates):
-            if i % 10 == 0:
-                print(f"Entropy progress: {i}/{len(top_candidates)}")
+            if i % step_size == 0 or i == total_candidates - 1:
+                progress_percent = (i / total_candidates) * 100
+                print(f"Entropy progress: {i}/{total_candidates} ({progress_percent:.1f}%)...")
             entropy = calculate_entropy(word, word_list)
             word_scores.append((word, info_score, likelihood_score, entropy))
     else:

@@ -87,10 +87,13 @@ def find_best_frequency_words(word_list: List[str], top_n: int = 10, find_lowest
     print(f"Frequency analysis complete. Now scoring {len(word_list)} words...")
 
     word_scores = []
+    total_words = len(word_list)
+    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
 
     for i, word in enumerate(word_list):
-      #  if i % 1000 == 0 and len(word_list) > 1000:
-       #     print(f"Progress: {i}/{len(word_list)} words processed...")
+        if i % step_size == 0 or i == total_words - 1:
+            progress_percent = (i / total_words) * 100
+            print(f"Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
 
         # OPTIMIZED: Simple arithmetic using pre-calculated frequencies
         freq_score = sum(freq[i][word[i]] for i in range(word_length))

@@ -74,10 +74,13 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
 
     word_scores = []
     frequency_distribution = defaultdict(int)
+    total_words = len(word_list)
+    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
 
     for i, word in enumerate(word_list):
-        if i % 1000 == 0:
-            print(f"   Processed {i}/{len(word_list)} words...")
+        if i % step_size == 0 or i == total_words - 1:
+            progress_percent = (i / total_words) * 100
+            print(f"   Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
 
         raw_freq = get_raw_frequency(word)
         scaled_score = scale_frequency_score(raw_freq)
@@ -97,9 +100,7 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
         else:
             frequency_distribution['very_common'] += 1
 
-    print(f"   Completed processing {len(word_list)} words.")
-
-    # Sort by scaled score
+    print(f"   Completed processing {len(word_list)} words (100.0%).")    # Sort by scaled score
     word_scores.sort(key=lambda x: x[2], reverse=True)
 
     # Split into most and least common
