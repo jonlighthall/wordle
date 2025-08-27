@@ -1,32 +1,33 @@
-import random
+import datetime
 import math
 import os
-import datetime
+import random
 from collections import Counter
-from typing import List, Tuple
-from multiprocessing import Pool, cpu_count
 from functools import partial
+from multiprocessing import Pool, cpu_count
+from typing import List, Tuple
+
+from ..core.common_utils import (
+    DATA_DIR,
+    LOGS_DIR,
+    REPO_ROOT,
+    WORDFREQ_AVAILABLE,
+    format_wordfreq_score,
+    get_word_frequency_score,
+    is_wordfreq_available,
+)
 from ..core.wordle_utils import (
-    get_feedback,
     calculate_entropy,
+    filter_wordle_appropriate,
+    filter_words_unique_letters,
+    get_feedback,
+    get_word_information_score,
     has_unique_letters,
     is_valid_word,
     load_words,
-    filter_words_unique_letters,
-    filter_wordle_appropriate,
-    should_prefer_isograms,
     remove_word_from_list,
     save_words_to_file,
-    get_word_information_score,
-)
-from ..core.common_utils import (
-    get_word_frequency_score,
-    WORDFREQ_AVAILABLE,
-    REPO_ROOT,
-    DATA_DIR,
-    LOGS_DIR,
-    format_wordfreq_score,
-    is_wordfreq_available,
+    should_prefer_isograms,
 )
 
 # Default starting words for algorithms
@@ -303,7 +304,7 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     try:
         with open(os.path.join(DATA_DIR, "words_missing.txt"), "a") as f:
             f.write(f"{word.upper()}\n")
-        print(f"    Failed word added to words_missing.txt")
+        print("    Failed word added to words_missing.txt")
     except Exception as e:
         print(f"    Warning: Could not add word to words_missing.txt: {e}")
 
@@ -313,7 +314,7 @@ def write_challenging_word(word: str):
     try:
         with open(os.path.join(DATA_DIR, "words_challenging.txt"), "a") as f:
             f.write(f"{word.upper()}\n")
-        print(f"    Challenging word added to words_challenging.txt")
+        print("    Challenging word added to words_challenging.txt")
     except Exception as e:
         print(f"    Warning: Could not add word to words_challenging.txt: {e}")
 
@@ -1458,7 +1459,7 @@ def interactive_mode():
     elif target_choice == "2":
         # Random target word
         target = random.choice(word_list)
-        print(f"\n🎯 Random target word selected.")
+        print("\n🎯 Random target word selected.")
         print("🤖 AI algorithms will suggest words at each step...\n")
 
         try:
@@ -1473,7 +1474,7 @@ def interactive_mode():
 
     else:
         # Manual feedback mode (real Wordle)
-        print(f"\n🎮 REAL WORDLE MODE - MULTI-ALGORITHM ASSISTANT")
+        print("\n🎮 REAL WORDLE MODE - MULTI-ALGORITHM ASSISTANT")
         print("=" * 60)
         print(
             "🌐 Play on the real Wordle website and get suggestions from all algorithms."
@@ -1706,26 +1707,30 @@ def play_multi_algorithm_game(
             scores = suggestion["scores"]
             # Use wordfreq as primary, letter frequency as secondary if available
             wordfreq_score = scores.get("wordfreq", 0)
-            lettfreq_score = (
-                scores.get("frequency", 0) / 1000.0
-                if scores.get("frequency", 0) > 0
-                else 0
-            )
+            lettfreq_raw = scores.get("frequency", 0)
 
-            # Normalize wordfreq score to 0-1 range for composite calculation
+            # Normalize wordfreq score to 0-1 range
             # New wordfreq scale: 0 = not found, ~1-2 = very rare, ~7 = most common
             wordfreq_normalized = (
                 min(1.0, wordfreq_score / 7.0) if wordfreq_score > 0 else 0.0
             )
 
+            # Normalize letter frequency score to 0-1 range
+            # Letter frequency typically ranges from ~1000 to ~8000+
+            # Using 8000 as max for normalization to get 0-1 range
+            lettfreq_normalized = (
+                min(1.0, lettfreq_raw / 8000.0) if lettfreq_raw > 0 else 0.0
+            )
+
             # Weighted combination: 70% real-world frequency, 30% letter frequency
-            return wordfreq_normalized * 0.7 + lettfreq_score * 0.3
+            # Now both components contribute 0-0.7 and 0-0.3 respectively
+            return wordfreq_normalized * 0.7 + lettfreq_normalized * 0.3
 
         all_suggestions.sort(key=get_sort_key, reverse=True)
 
         # Display consolidated and sorted suggestions
         if is_wordfreq_available():
-            print("🎯 Word Suggestions (sorted by real-world frequency):")
+            print("🎯 Word Suggestions (sorted by combined word + letter frequency):")
         else:
             print(
                 "🎯 Word Suggestions (sorted by letter frequency - wordfreq unavailable):"
