@@ -6,18 +6,43 @@ from collections import Counter
 from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
 from functools import partial
-from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
-from ..core.common_utils import get_word_frequency_score, WORDFREQ_AVAILABLE, REPO_ROOT, DATA_DIR, LOGS_DIR, format_wordfreq_score, is_wordfreq_available
+from ..core.wordle_utils import (
+    get_feedback,
+    calculate_entropy,
+    has_unique_letters,
+    is_valid_word,
+    load_words,
+    filter_words_unique_letters,
+    filter_wordle_appropriate,
+    should_prefer_isograms,
+    remove_word_from_list,
+    save_words_to_file,
+    get_word_information_score,
+)
+from ..core.common_utils import (
+    get_word_frequency_score,
+    WORDFREQ_AVAILABLE,
+    REPO_ROOT,
+    DATA_DIR,
+    LOGS_DIR,
+    format_wordfreq_score,
+    is_wordfreq_available,
+)
 
 # Default starting words for algorithms
 # To change the default starting words, modify these constants:
-DEFAULT_ENTROPY_STARTER = "tares"      # Used by entropy and adaptive hybrid algorithms
-DEFAULT_LETTFREQ_STARTER = "cares"    # Used by letter frequency algorithm and random fallback
-DEFAULT_INFORMATION_STARTER = "enzym"  # Used by information algorithm (balances letter frequency and diversity)
-DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallback cases
+DEFAULT_ENTROPY_STARTER = "tares"  # Used by entropy and adaptive hybrid algorithms
+DEFAULT_LETTFREQ_STARTER = (
+    "cares"  # Used by letter frequency algorithm and random fallback
+)
+DEFAULT_INFORMATION_STARTER = (
+    "enzym"  # Used by information algorithm (balances letter frequency and diversity)
+)
+DEFAULT_STARTER = "crane"  # Used by ultra-efficient and some fallback cases
 
 # Popular Wordle starting words that users often choose
 POPULAR_WORDS = ["crane", "slate", "trace", "stare", "audio", "ratio", "penis"]
+
 
 def score_words_by_frequency(words: List[str]) -> List[Tuple[str, float]]:
     """Score a list of words by their real-world frequency.
@@ -33,12 +58,14 @@ def score_words_by_frequency(words: List[str]) -> List[Tuple[str, float]]:
     scored_words.sort(key=lambda x: x[1], reverse=True)
     return scored_words
 
+
 # ANSI color codes for terminal output
 class Colors:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RESET = '\033[0m'  # Reset to default color
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RESET = "\033[0m"  # Reset to default color
+
 
 def calculate_entropy_for_word(args):
     """Helper function for parallel entropy calculation.
@@ -65,10 +92,9 @@ def calculate_entropy_for_word(args):
     return (guess, entropy)
 
 
-
-
-
-def get_universal_optimal_starter(method: str = "entropy", strategy: str = "general") -> str:
+def get_universal_optimal_starter(
+    method: str = "entropy", strategy: str = "general"
+) -> str:
     """Get universal optimal starting words based on extensive pre-analysis.
 
     These are computed offline based on performance against large datasets,
@@ -80,36 +106,35 @@ def get_universal_optimal_starter(method: str = "entropy", strategy: str = "gene
 
     optimal_starters = {
         "entropy": {
-            "general": DEFAULT_ENTROPY_STARTER,      # Best overall entropy and proven track record
-            "aggressive": "slate",   # Maximum elimination for difficult words
-            "balanced": "adieu",     # Good balance covering vowels
-            "conservative": DEFAULT_LETTFREQ_STARTER  # Current best performing starter
+            "general": DEFAULT_ENTROPY_STARTER,  # Best overall entropy and proven track record
+            "aggressive": "slate",  # Maximum elimination for difficult words
+            "balanced": "adieu",  # Good balance covering vowels
+            "conservative": DEFAULT_LETTFREQ_STARTER,  # Current best performing starter
         },
         "frequency": {
-            "general": DEFAULT_LETTFREQ_STARTER,      # Best letter frequency-based performance
-            "common": "cares",       # Focus on most common letters
-            "balanced": "arose",     # Balance of frequency and position
-            "vowel_focus": "adieu"   # When expecting vowel-heavy targets
+            "general": DEFAULT_LETTFREQ_STARTER,  # Best letter frequency-based performance
+            "common": "cares",  # Focus on most common letters
+            "balanced": "arose",  # Balance of frequency and position
+            "vowel_focus": "adieu",  # When expecting vowel-heavy targets
         },
         "information": {
             "general": DEFAULT_INFORMATION_STARTER,  # Best for hybrid information approach
-            "balanced": "cares",                     # Good information + entropy balance
-            "precise": "stare"                       # High precision for end-game
+            "balanced": "cares",  # Good information + entropy balance
+            "precise": "stare",  # High precision for end-game
         },
         "smart_hybrid": {
-            "general": DEFAULT_STARTER,      # Proven best all-around starter
+            "general": DEFAULT_STARTER,  # Proven best all-around starter
             "challenging": "slate",  # For difficult word sets
-            "balanced": "adieu"      # Vowel coverage for diverse targets
+            "balanced": "adieu",  # Vowel coverage for diverse targets
         },
         "optimal_transition": {
-            "general": "tares",       # Entropy-optimal starter for best transition performance
-            "balanced": "slate",      # Good balance for transition strategy
-            "challenging": "cares"    # Alternative for difficult words
-        }
+            "general": "tares",  # Entropy-optimal starter for best transition performance
+            "balanced": "slate",  # Good balance for transition strategy
+            "challenging": "cares",  # Alternative for difficult words
+        },
     }
 
     return optimal_starters.get(method, {}).get(strategy, DEFAULT_STARTER)
-
 
 
 def analyze_word_reduction(results_by_algorithm: dict) -> dict:
@@ -125,12 +150,16 @@ def analyze_word_reduction(results_by_algorithm: dict) -> dict:
         step_reductions = {}  # Track reduction at each step number
 
         for result in algorithm_results:
-            word_sizes = result['word_list_sizes']
+            word_sizes = result["word_list_sizes"]
 
             # Calculate percentage reductions at each step
             for step in range(1, len(word_sizes)):
-                if word_sizes[step-1] > 0:
-                    reduction_pct = (word_sizes[step-1] - word_sizes[step]) / word_sizes[step-1] * 100
+                if word_sizes[step - 1] > 0:
+                    reduction_pct = (
+                        (word_sizes[step - 1] - word_sizes[step])
+                        / word_sizes[step - 1]
+                        * 100
+                    )
 
                     if step not in step_reductions:
                         step_reductions[step] = []
@@ -148,13 +177,14 @@ def analyze_word_reduction(results_by_algorithm: dict) -> dict:
                 avg_by_step[step] = sum(reductions) / len(reductions)
 
             analysis[algorithm_key] = {
-                'avg_reduction_per_step': avg_reduction,
-                'max_reduction_seen': max_reduction,
-                'avg_by_step': avg_by_step,
-                'total_reductions': len(all_reductions)
+                "avg_reduction_per_step": avg_reduction,
+                "max_reduction_seen": max_reduction,
+                "avg_by_step": avg_by_step,
+                "total_reductions": len(all_reductions),
             }
 
     return analysis
+
 
 def analyze_algorithm_performance_by_step(results_by_algorithm: dict) -> dict:
     """Analyze which algorithm performs better at each step of the game."""
@@ -174,15 +204,23 @@ def analyze_algorithm_performance_by_step(results_by_algorithm: dict) -> dict:
 
         # Collect reduction data for this step
         for result in entropy_results:
-            word_sizes = result['word_list_sizes']
-            if step < len(word_sizes) and word_sizes[step-1] > 0:
-                reduction_pct = (word_sizes[step-1] - word_sizes[step]) / word_sizes[step-1] * 100
+            word_sizes = result["word_list_sizes"]
+            if step < len(word_sizes) and word_sizes[step - 1] > 0:
+                reduction_pct = (
+                    (word_sizes[step - 1] - word_sizes[step])
+                    / word_sizes[step - 1]
+                    * 100
+                )
                 entropy_reductions.append(reduction_pct)
 
         for result in frequency_results:
-            word_sizes = result['word_list_sizes']
-            if step < len(word_sizes) and word_sizes[step-1] > 0:
-                reduction_pct = (word_sizes[step-1] - word_sizes[step]) / word_sizes[step-1] * 100
+            word_sizes = result["word_list_sizes"]
+            if step < len(word_sizes) and word_sizes[step - 1] > 0:
+                reduction_pct = (
+                    (word_sizes[step - 1] - word_sizes[step])
+                    / word_sizes[step - 1]
+                    * 100
+                )
                 frequency_reductions.append(reduction_pct)
 
         # Calculate averages for this step
@@ -215,15 +253,16 @@ def analyze_algorithm_performance_by_step(results_by_algorithm: dict) -> dict:
                 entropy_weight = 1.0 - frequency_weight
 
             step_performance[step] = {
-                'entropy_avg_reduction': entropy_avg,
-                'frequency_avg_reduction': frequency_avg,
-                'better_algorithm': better_algorithm,
-                'advantage': advantage,
-                'entropy_weight': entropy_weight,
-                'frequency_weight': frequency_weight
+                "entropy_avg_reduction": entropy_avg,
+                "frequency_avg_reduction": frequency_avg,
+                "better_algorithm": better_algorithm,
+                "advantage": advantage,
+                "entropy_weight": entropy_weight,
+                "frequency_weight": frequency_weight,
             }
 
     return step_performance
+
 
 def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
     """Format the solve result with appropriate colors."""
@@ -234,6 +273,7 @@ def format_result(solved: bool, attempts: int, wordle_limit: int = 6) -> str:
             return f"{Colors.RED}✓ Solved in {attempts} guesses (exceeds Wordle limit of {wordle_limit})!{Colors.RESET}"
     else:
         return f"{Colors.RED}✗ Failed to solve after {attempts} guesses.{Colors.RESET}"
+
 
 def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     """Write a failed word to a log file with timestamp and method info."""
@@ -267,6 +307,7 @@ def write_failed_word(word: str, method: str, strategy: str = "fixed"):
     except Exception as e:
         print(f"    Warning: Could not add word to words_missing.txt: {e}")
 
+
 def write_challenging_word(word: str):
     """Write a word that took more than 6 guesses to solve."""
     try:
@@ -276,7 +317,10 @@ def write_challenging_word(word: str):
     except Exception as e:
         print(f"    Warning: Could not add word to words_challenging.txt: {e}")
 
-def write_solver_state_after_6(target: str, method: str, strategy: str, possible_words: List[str]):
+
+def write_solver_state_after_6(
+    target: str, method: str, strategy: str, possible_words: List[str]
+):
     """Write solver state when it exceeds 6 guesses (Wordle limit)."""
     import datetime
 
@@ -315,16 +359,28 @@ def write_solver_state_after_6(target: str, method: str, strategy: str, possible
     except Exception as e:
         print(f"    Warning: Could not log solver state to {filename}: {e}")
 
+
 class WordleSolver:
-    def __init__(self, word_list: List[str], word_length: int = 5, max_guesses: int = 20, word_file_path: str = None, hard_mode: bool = False):
+    def __init__(
+        self,
+        word_list: List[str],
+        word_length: int = 5,
+        max_guesses: int = 20,
+        word_file_path: str = None,
+        hard_mode: bool = False,
+    ):
         """Initialize the solver (like a constructor in C++)."""
         self.word_list = word_list  # List of possible words (like a Fortran array)
         self.word_length = word_length  # Length of words (default 5 for Wordle)
-        self.max_guesses = max_guesses  # Max attempts allowed (increased for automated testing)
+        self.max_guesses = (
+            max_guesses  # Max attempts allowed (increased for automated testing)
+        )
         self.possible_words = word_list.copy()  # Working copy of word list
         self.guesses = []  # Store guesses made
         self.feedbacks = []  # Store feedback for each guess
-        self.word_file_path = word_file_path  # Path to word file for saving when words are removed
+        self.word_file_path = (
+            word_file_path  # Path to word file for saving when words are removed
+        )
         self.hard_mode = hard_mode  # Force solver to use revealed information
 
     def filter_words_unique_letters(self, word_list: List[str]) -> List[str]:
@@ -336,21 +392,24 @@ class WordleSolver:
         print(f"    Removing '{rejected_word}' from word lists (rejected by Wordle)")
         self.word_list = remove_word_from_list(self.word_list, rejected_word)
         self.possible_words = remove_word_from_list(self.possible_words, rejected_word)
-        print(f"    Word lists updated: {len(self.word_list)} total words, {len(self.possible_words)} possible words")
+        print(
+            f"    Word lists updated: {len(self.word_list)} total words, {len(self.possible_words)} possible words"
+        )
 
         # Save updated word list to file if we have a file path
         if self.word_file_path:
             if save_words_to_file(self.word_file_path, self.word_list):
                 print(f"    Updated word list saved to {self.word_file_path}")
             else:
-                print(f"    Warning: Could not save updated word list to {self.word_file_path}")
+                print(
+                    f"    Warning: Could not save updated word list to {self.word_file_path}"
+                )
 
     def filter_words(self, guess: str, feedback: str, verbose: bool = True) -> None:
         """Filter possible words based on guess and feedback."""
         old_count = len(self.possible_words)
         self.possible_words = [
-            word for word in self.possible_words
-            if is_valid_word(word, guess, feedback)
+            word for word in self.possible_words if is_valid_word(word, guess, feedback)
         ]
         new_count = len(self.possible_words)
         if verbose:
@@ -364,9 +423,13 @@ class WordleSolver:
 
         # Prefer isograms when it makes sense
         if should_prefer_isograms(self.possible_words, len(self.guesses)):
-            isogram_candidates = [word for word in self.possible_words if has_unique_letters(word)]
+            isogram_candidates = [
+                word for word in self.possible_words if has_unique_letters(word)
+            ]
             if isogram_candidates:
-                print(f"    Preferring isograms: choosing from {len(isogram_candidates)} words with unique letters")
+                print(
+                    f"    Preferring isograms: choosing from {len(isogram_candidates)} words with unique letters"
+                )
                 return random.choice(isogram_candidates)
 
         if len(self.guesses) == 0:
@@ -382,9 +445,13 @@ class WordleSolver:
         # Handle first guess
         if len(self.guesses) == 0:
             if not use_optimal_start:
-                return get_universal_optimal_starter("entropy", "general")  # Use improved starter
+                return get_universal_optimal_starter(
+                    "entropy", "general"
+                )  # Use improved starter
             else:
-                print("    Computing optimal entropy-based first guess from full word list...")
+                print(
+                    "    Computing optimal entropy-based first guess from full word list..."
+                )
 
         # Enhanced early termination: switch to direct guessing sooner
         num_possible = len(self.possible_words)
@@ -392,23 +459,37 @@ class WordleSolver:
 
         # More aggressive early termination based on attempt number
         if attempt >= 3 and num_possible <= 4:
-            print(f"    Entropy: attempt {attempt+1}, {num_possible} words left, switching to direct guessing")
+            print(
+                f"    Entropy: attempt {attempt+1}, {num_possible} words left, switching to direct guessing"
+            )
             return self.possible_words[0]
         elif attempt >= 2 and num_possible <= 2:
-            print(f"    Entropy: attempt {attempt+1}, {num_possible} words left, switching to direct guessing")
+            print(
+                f"    Entropy: attempt {attempt+1}, {num_possible} words left, switching to direct guessing"
+            )
             return self.possible_words[0]
         elif num_possible <= 1:
-            return self.possible_words[0] if self.possible_words else random.choice(self.word_list)
+            return (
+                self.possible_words[0]
+                if self.possible_words
+                else random.choice(self.word_list)
+            )
 
         # Calculate entropy for all words and find the best ones
-        search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
+        search_space = (
+            self.word_list
+            if (len(self.guesses) == 0 and use_optimal_start)
+            else self.possible_words
+        )
 
         # Prefer isograms when it makes sense (early in game or when many possibilities are isograms)
         if should_prefer_isograms(self.possible_words, len(self.guesses)):
             unique_search_space = self.filter_words_unique_letters(search_space)
             if unique_search_space:  # Only use if we have unique-letter words available
                 search_space = unique_search_space
-                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+                print(
+                    f"    Preferring isograms: filtered to {len(search_space)} words with unique letters"
+                )
 
         word_entropies = []
 
@@ -416,7 +497,11 @@ class WordleSolver:
         total_words_to_check = len(search_space)
 
         if total_words_to_check > 100:  # Only show progress for longer computations
-            print(f"    Computing entropy for {total_words_to_check} words: ", end="", flush=True)
+            print(
+                f"    Computing entropy for {total_words_to_check} words: ",
+                end="",
+                flush=True,
+            )
 
         # Use parallel processing for large computations
         if total_words_to_check > 50:  # Use parallel processing for 50+ words
@@ -449,7 +534,11 @@ class WordleSolver:
                     entropy = 0
                     for count in pattern_counts.values():
                         probability = count / total_words
-                        entropy -= probability * math.log2(probability) if probability > 0 else 0
+                        entropy -= (
+                            probability * math.log2(probability)
+                            if probability > 0
+                            else 0
+                        )
 
                     word_entropies.append((guess, entropy))
 
@@ -473,7 +562,9 @@ class WordleSolver:
                 entropy = 0
                 for count in pattern_counts.values():
                     probability = count / total_words
-                    entropy -= probability * math.log2(probability) if probability > 0 else 0
+                    entropy -= (
+                        probability * math.log2(probability) if probability > 0 else 0
+                    )
 
                 word_entropies.append((guess, entropy))
 
@@ -493,20 +584,34 @@ class WordleSolver:
 
         # Handle ties and print results
         if len(top_words) > 1:
-            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            search_desc = (
+                "full word list"
+                if (len(self.guesses) == 0 and use_optimal_start)
+                else "possible words"
+            )
             if len(self.guesses) == 0 and unique_search_space:
                 search_desc += " (unique letters only)"
-            print(f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f} from {search_desc}: {top_words}")
+            print(
+                f"    Tie between {len(top_words)} words with entropy {max_entropy:.3f} from {search_desc}: {top_words}"
+            )
             # For entropy ties, just pick the first one (they're all equally good)
             return top_words[0]
         else:
-            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            search_desc = (
+                "full word list"
+                if (len(self.guesses) == 0 and use_optimal_start)
+                else "possible words"
+            )
             if len(self.guesses) == 0 and unique_search_space:
                 search_desc += " (unique letters only)"
-            print(f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f} from {search_desc}")
+            print(
+                f"    Best word: '{top_words[0]}' with entropy {max_entropy:.3f} from {search_desc}"
+            )
             return top_words[0]
 
-    def choose_guess_frequency(self, use_optimal_start: bool = False, start_strategy: str = "fixed") -> str:
+    def choose_guess_frequency(
+        self, use_optimal_start: bool = False, start_strategy: str = "fixed"
+    ) -> str:
         """Choose a guess based on letter frequency/likelihood in each position with entropy tie-breaking."""
         if not self.possible_words:
             print("    No possible words left, using random from full list")
@@ -521,23 +626,33 @@ class WordleSolver:
                 print(f"    Random first guess: '{chosen}'")
                 return chosen
             elif start_strategy == "highest":
-                print("    Computing highest frequency-based first guess from full word list (unique letters only)...")
+                print(
+                    "    Computing highest frequency-based first guess from full word list (unique letters only)..."
+                )
                 use_optimal_start = True  # Force optimal computation
             elif start_strategy == "lowest":
-                print("    Computing lowest frequency-based first guess from full word list (unique letters only)...")
+                print(
+                    "    Computing lowest frequency-based first guess from full word list (unique letters only)..."
+                )
                 use_optimal_start = True  # Force optimal computation
             else:
                 return DEFAULT_STARTER  # Default fallback
 
         # Calculate letter frequencies for each position (equivalent to likelihood matrix)
-        search_space = self.word_list if (len(self.guesses) == 0 and use_optimal_start) else self.possible_words
+        search_space = (
+            self.word_list
+            if (len(self.guesses) == 0 and use_optimal_start)
+            else self.possible_words
+        )
 
         # Prefer isograms when it makes sense (early in game or when many possibilities are isograms)
         if should_prefer_isograms(self.possible_words, len(self.guesses)):
             unique_search_space = self.filter_words_unique_letters(search_space)
             if unique_search_space:  # Only use if we have unique-letter words available
                 search_space = unique_search_space
-                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+                print(
+                    f"    Preferring isograms: filtered to {len(search_space)} words with unique letters"
+                )
 
         total_words = len(self.possible_words)
         freq = [Counter() for _ in range(self.word_length)]
@@ -557,24 +672,42 @@ class WordleSolver:
         # For first guess with lowest strategy, find minimum instead of maximum
         if len(self.guesses) == 0 and start_strategy == "lowest":
             target_score = min(freq_score for _, freq_score, _ in word_scores)
-            target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
-                           if freq_score == target_score]
+            target_words = [
+                (word, freq_score, likelihood_score)
+                for word, freq_score, likelihood_score in word_scores
+                if freq_score == target_score
+            ]
             search_desc = "full word list (lowest frequency, unique letters only)"
         else:
             # Find the maximum frequency score (normal case)
             target_score = max(freq_score for _, freq_score, _ in word_scores)
-            target_words = [(word, freq_score, likelihood_score) for word, freq_score, likelihood_score in word_scores
-                           if freq_score == target_score]
-            search_desc = "full word list" if (len(self.guesses) == 0 and use_optimal_start) else "possible words"
+            target_words = [
+                (word, freq_score, likelihood_score)
+                for word, freq_score, likelihood_score in word_scores
+                if freq_score == target_score
+            ]
+            search_desc = (
+                "full word list"
+                if (len(self.guesses) == 0 and use_optimal_start)
+                else "possible words"
+            )
             if len(self.guesses) == 0 and use_optimal_start and unique_search_space:
                 search_desc += " (unique letters only)"
 
         # Handle ties and print results
         if len(target_words) > 1:
             word_list = [word for word, _, _ in target_words]
-            likelihood_score = target_words[0][2]  # All tied words have same likelihood score
-            score_type = "lowest" if (len(self.guesses) == 0 and start_strategy == "lowest") else "highest"
-            print(f"    Tie between {len(target_words)} words with {score_type} frequency score {target_score} (likelihood {likelihood_score:.3f}) from {search_desc}: {word_list}")
+            likelihood_score = target_words[0][
+                2
+            ]  # All tied words have same likelihood score
+            score_type = (
+                "lowest"
+                if (len(self.guesses) == 0 and start_strategy == "lowest")
+                else "highest"
+            )
+            print(
+                f"    Tie between {len(target_words)} words with {score_type} frequency score {target_score} (likelihood {likelihood_score:.3f}) from {search_desc}: {word_list}"
+            )
 
             # Use entropy to break ties
             best_guess = None
@@ -589,7 +722,9 @@ class WordleSolver:
                 entropy = 0
                 for count in pattern_counts.values():
                     probability = count / total_words
-                    entropy -= probability * math.log2(probability) if probability > 0 else 0
+                    entropy -= (
+                        probability * math.log2(probability) if probability > 0 else 0
+                    )
 
                 if entropy > best_entropy:
                     best_entropy = entropy
@@ -599,8 +734,14 @@ class WordleSolver:
             return best_guess
         else:
             word, freq_score, likelihood_score = target_words[0]
-            score_type = "lowest" if (len(self.guesses) == 0 and start_strategy == "lowest") else "highest"
-            print(f"    Best word: '{word}' with {score_type} frequency score {freq_score} (likelihood {likelihood_score:.3f}) from {search_desc}")
+            score_type = (
+                "lowest"
+                if (len(self.guesses) == 0 and start_strategy == "lowest")
+                else "highest"
+            )
+            print(
+                f"    Best word: '{word}' with {score_type} frequency score {freq_score} (likelihood {likelihood_score:.3f}) from {search_desc}"
+            )
             return word
 
     def choose_guess_information(self, use_optimal_start: bool = False) -> str:
@@ -627,9 +768,14 @@ class WordleSolver:
         # Prefer isograms when it makes sense
         if should_prefer_isograms(self.possible_words, len(self.guesses)):
             unique_search_space = self.filter_words_unique_letters(search_space)
-            if unique_search_space and len(unique_search_space) >= len(search_space) * 0.3:
+            if (
+                unique_search_space
+                and len(unique_search_space) >= len(search_space) * 0.3
+            ):
                 search_space = unique_search_space
-                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+                print(
+                    f"    Preferring isograms: filtered to {len(search_space)} words with unique letters"
+                )
 
         # Calculate information scores (no entropy mixing to avoid double counting)
         word_scores = []
@@ -638,7 +784,11 @@ class WordleSolver:
         total_words_to_check = len(search_space)
 
         if total_words_to_check > 100:
-            print(f"    Computing information scores for {total_words_to_check} words: ", end="", flush=True)
+            print(
+                f"    Computing information scores for {total_words_to_check} words: ",
+                end="",
+                flush=True,
+            )
 
         # Use parallel processing for large computations
         if total_words_to_check > 50:
@@ -649,8 +799,17 @@ class WordleSolver:
             try:
                 with Pool(processes=num_processes) as pool:
                     # Get information scores directly without entropy mixing
-                    results = pool.map(lambda args: (args[0], get_word_information_score(args[0], args[1])), args_list)
-                    word_scores = [(word, info_score, info_score, 0.0) for word, info_score in results]
+                    results = pool.map(
+                        lambda args: (
+                            args[0],
+                            get_word_information_score(args[0], args[1]),
+                        ),
+                        args_list,
+                    )
+                    word_scores = [
+                        (word, info_score, info_score, 0.0)
+                        for word, info_score in results
+                    ]
 
                 if total_words_to_check > 100:
                     print(" done (parallel)")
@@ -673,7 +832,9 @@ class WordleSolver:
         # Find the best word based on information score only
         best_word, best_combined, best_info, _ = max(word_scores, key=lambda x: x[1])
 
-        print(f"    Best word: '{best_word}' with info score {best_info:.3f} from possible words")
+        print(
+            f"    Best word: '{best_word}' with info score {best_info:.3f} from possible words"
+        )
         return best_word
 
     def is_valid_hard_mode_guess(self, guess: str) -> bool:
@@ -684,16 +845,14 @@ class WordleSolver:
         # Check against each previous guess/feedback pair
         for prev_guess, prev_feedback in zip(self.guesses, self.feedbacks):
             for i, (g_char, f_char) in enumerate(zip(prev_guess, prev_feedback)):
-                if f_char == 'G':  # Green letter must be in same position
+                if f_char == "G":  # Green letter must be in same position
                     if guess[i] != g_char:
                         return False
-                elif f_char == 'Y':  # Yellow letter must be somewhere else in the word
+                elif f_char == "Y":  # Yellow letter must be somewhere else in the word
                     if g_char not in guess or guess[i] == g_char:
                         return False
 
         return True
-
-
 
     def choose_guess_ultra_efficient(self) -> str:
         """Ultra-efficient algorithm that prioritizes speed over theoretical optimality.
@@ -713,7 +872,9 @@ class WordleSolver:
 
         # First guess: use proven optimal starter
         if attempt == 0:
-            starter = get_universal_optimal_starter("entropy", "aggressive")  # "slate" - unique starter
+            starter = get_universal_optimal_starter(
+                "entropy", "aggressive"
+            )  # "slate" - unique starter
             return starter
 
         # Very early termination for small word lists
@@ -724,23 +885,31 @@ class WordleSolver:
         # Smart threshold adjustment based on attempt number
         # Switch to direct guessing much earlier
         if attempt >= 3 and num_possible <= 8:
-            print(f"    Ultra efficient: attempt {attempt+1}, {num_possible} words left, guessing directly")
+            print(
+                f"    Ultra efficient: attempt {attempt+1}, {num_possible} words left, guessing directly"
+            )
             return self.possible_words[0]
 
         if attempt >= 2 and num_possible <= 5:
-            print(f"    Ultra efficient: attempt {attempt+1}, {num_possible} words left, guessing directly")
+            print(
+                f"    Ultra efficient: attempt {attempt+1}, {num_possible} words left, guessing directly"
+            )
             return self.possible_words[0]
 
         # Use pure entropy for maximum elimination when many words remain
         if num_possible > 20:
-            print(f"    Ultra efficient: {num_possible} words remaining, using entropy strategy")
+            print(
+                f"    Ultra efficient: {num_possible} words remaining, using entropy strategy"
+            )
             return self.choose_guess_entropy(False)
 
         # Mid-game: prefer words from possible list to maximize chance of lucky guess
         elif num_possible > 8:
-            print(f"    Ultra efficient: {num_possible} words remaining, preferring possible words")
+            print(
+                f"    Ultra efficient: {num_possible} words remaining, preferring possible words"
+            )
             # Mix of entropy and direct guessing - choose from possible words
-            search_space = self.possible_words[:min(20, len(self.possible_words))]
+            search_space = self.possible_words[: min(20, len(self.possible_words))]
 
             best_word = None
             best_entropy = -1
@@ -751,12 +920,16 @@ class WordleSolver:
                     best_entropy = entropy
                     best_word = word
 
-            print(f"    Best possible word: '{best_word}' with entropy {best_entropy:.3f}")
+            print(
+                f"    Best possible word: '{best_word}' with entropy {best_entropy:.3f}"
+            )
             return best_word
 
         # Late game: direct guessing
         else:
-            print(f"    Ultra efficient: {num_possible} words remaining, guessing directly")
+            print(
+                f"    Ultra efficient: {num_possible} words remaining, guessing directly"
+            )
             return self.possible_words[0]
 
     def choose_guess_adaptive_hybrid(self) -> str:
@@ -777,7 +950,9 @@ class WordleSolver:
         # First guess: use proven optimal starter
         if attempt == 0:
             # Use a different starter than entropy to avoid duplicates
-            starter = get_universal_optimal_starter("entropy", "balanced")  # "adieu" instead of "tares"
+            starter = get_universal_optimal_starter(
+                "entropy", "balanced"
+            )  # "adieu" instead of "tares"
             return starter
 
         # Very small word lists: direct guessing
@@ -790,22 +965,36 @@ class WordleSolver:
         # For best performance, consider using 'optimal_transition' algorithm instead
         # Consolidated evidence shows entropy performs better from step 2 onwards
         step_weights = {
-            1: {'entropy': 0.5, 'frequency': 0.5},  # Consistently close, frequency slight edge
-            2: {'entropy': 0.7, 'frequency': 0.3},  # Entropy advantage appears consistently
-            3: {'entropy': 0.6, 'frequency': 0.4},  # Entropy maintains advantage
-            4: {'entropy': 0.6, 'frequency': 0.4},  # Entropy continues to lead
-            5: {'entropy': 0.7, 'frequency': 0.3},  # Entropy shows stronger advantage late game
-            6: {'entropy': 0.6, 'frequency': 0.4},  # Extrapolated based on entropy trend
+            1: {
+                "entropy": 0.5,
+                "frequency": 0.5,
+            },  # Consistently close, frequency slight edge
+            2: {
+                "entropy": 0.7,
+                "frequency": 0.3,
+            },  # Entropy advantage appears consistently
+            3: {"entropy": 0.6, "frequency": 0.4},  # Entropy maintains advantage
+            4: {"entropy": 0.6, "frequency": 0.4},  # Entropy continues to lead
+            5: {
+                "entropy": 0.7,
+                "frequency": 0.3,
+            },  # Entropy shows stronger advantage late game
+            6: {
+                "entropy": 0.6,
+                "frequency": 0.4,
+            },  # Extrapolated based on entropy trend
         }
 
         current_step = attempt + 1
         if current_step not in step_weights:
             # Default to balanced for steps beyond 6
-            weights = {'entropy': 0.5, 'frequency': 0.5}
+            weights = {"entropy": 0.5, "frequency": 0.5}
         else:
             weights = step_weights[current_step]
 
-        print(f"    Adaptive hybrid: step {current_step}, using entropy weight {weights['entropy']:.1f}, frequency weight {weights['frequency']:.1f}")
+        print(
+            f"    Adaptive hybrid: step {current_step}, using entropy weight {weights['entropy']:.1f}, frequency weight {weights['frequency']:.1f}"
+        )
 
         # Calculate scores for both algorithms
         search_space = self.possible_words.copy()
@@ -815,7 +1004,9 @@ class WordleSolver:
             unique_search_space = self.filter_words_unique_letters(search_space)
             if unique_search_space:
                 search_space = unique_search_space
-                print(f"    Preferring isograms: filtered to {len(search_space)} words with unique letters")
+                print(
+                    f"    Preferring isograms: filtered to {len(search_space)} words with unique letters"
+                )
 
         word_scores = []
 
@@ -842,22 +1033,30 @@ class WordleSolver:
             entropy = 0
             for count in pattern_counts.values():
                 probability = count / total_words
-                entropy -= probability * math.log2(probability) if probability > 0 else 0
+                entropy -= (
+                    probability * math.log2(probability) if probability > 0 else 0
+                )
 
             # Normalize entropy (approximate max entropy is log2(total_words))
             max_possible_entropy = math.log2(total_words) if total_words > 1 else 1
             entropy_normalized = entropy / max_possible_entropy
 
             # Weighted combination
-            combined_score = (weights['entropy'] * entropy_normalized +
-                            weights['frequency'] * freq_score_normalized)
+            combined_score = (
+                weights["entropy"] * entropy_normalized
+                + weights["frequency"] * freq_score_normalized
+            )
 
             word_scores.append((word, combined_score, entropy, freq_score))
 
         # Find the best word
-        best_word, best_combined, best_entropy, best_freq = max(word_scores, key=lambda x: x[1])
+        best_word, best_combined, best_entropy, best_freq = max(
+            word_scores, key=lambda x: x[1]
+        )
 
-        print(f"    Best word: '{best_word}' with combined score {best_combined:.3f} (entropy: {best_entropy:.3f}, freq: {best_freq})")
+        print(
+            f"    Best word: '{best_word}' with combined score {best_combined:.3f} (entropy: {best_entropy:.3f}, freq: {best_freq})"
+        )
         return best_word
 
     def choose_guess_smart_hybrid(self) -> str:
@@ -872,15 +1071,23 @@ class WordleSolver:
         # First guess: use universal optimal starting word
         if attempt == 0:
             # Use universal starter - not dependent on target word knowledge
-            optimal_start = get_universal_optimal_starter("smart_hybrid", "general")  # "crane"
+            optimal_start = get_universal_optimal_starter(
+                "smart_hybrid", "general"
+            )  # "crane"
             print(f"    Smart hybrid: using universal optimal start '{optimal_start}'")
             return optimal_start
 
         # Dynamic threshold adjustment based on attempt number
         # Later in the game, switch to direct guessing sooner
-        direct_guess_threshold = max(2, 4 - attempt)  # 2 at attempt 2+, 4 at attempt 0, 3 at attempt 1
-        entropy_threshold = max(20, 80 - (attempt * 20))  # Decrease entropy threshold as attempts increase
-        info_threshold = max(6, 15 - (attempt * 3))   # Decrease info threshold as attempts increase
+        direct_guess_threshold = max(
+            2, 4 - attempt
+        )  # 2 at attempt 2+, 4 at attempt 0, 3 at attempt 1
+        entropy_threshold = max(
+            20, 80 - (attempt * 20)
+        )  # Decrease entropy threshold as attempts increase
+        info_threshold = max(
+            6, 15 - (attempt * 3)
+        )  # Decrease info threshold as attempts increase
 
         # Final stages: if very few words left, just guess from possibilities
         if num_possible <= direct_guess_threshold:
@@ -889,17 +1096,23 @@ class WordleSolver:
 
         # Early-mid game: use entropy for maximum elimination
         if num_possible > entropy_threshold:
-            print(f"    Smart hybrid: {num_possible} words remaining, using entropy strategy")
+            print(
+                f"    Smart hybrid: {num_possible} words remaining, using entropy strategy"
+            )
             return self.choose_guess_entropy(False)
 
         # Mid-late game: use information method for balanced approach
         elif num_possible > info_threshold:
-            print(f"    Smart hybrid: {num_possible} words remaining, using information strategy")
+            print(
+                f"    Smart hybrid: {num_possible} words remaining, using information strategy"
+            )
             return self.choose_guess_information(False)
 
         # Late game: use frequency for precision targeting
         else:
-            print(f"    Smart hybrid: {num_possible} words remaining, using frequency strategy")
+            print(
+                f"    Smart hybrid: {num_possible} words remaining, using frequency strategy"
+            )
             return self.choose_guess_frequency(start_strategy="fixed")
 
     def choose_guess_optimal_transition(self) -> str:
@@ -924,7 +1137,9 @@ class WordleSolver:
 
         # Direct guessing for very small sets
         if num_possible <= 2:
-            print(f"    Optimal transition: {num_possible} words left, guessing directly")
+            print(
+                f"    Optimal transition: {num_possible} words left, guessing directly"
+            )
             return self.possible_words[0]
 
         # The key insight: switch to known words when ≤50 words remain
@@ -932,20 +1147,26 @@ class WordleSolver:
 
         if num_possible > TRANSITION_THRESHOLD:
             # Use entropy for maximum information gain
-            print(f"    Optimal transition: {num_possible} words (>{TRANSITION_THRESHOLD}), using entropy strategy")
+            print(
+                f"    Optimal transition: {num_possible} words (>{TRANSITION_THRESHOLD}), using entropy strategy"
+            )
             return self.choose_guess_entropy(False)
         else:
             # Switch to known word frequency for better practical performance
-            print(f"    Optimal transition: {num_possible} words (≤{TRANSITION_THRESHOLD}), switching to wordfreq strategy")
+            print(
+                f"    Optimal transition: {num_possible} words (≤{TRANSITION_THRESHOLD}), switching to wordfreq strategy"
+            )
             return self.choose_guess_frequency(False, start_strategy="fixed")
 
-
-
-
-
-    def solve_automated(self, target: str, guess_algorithm: str = "random", start_strategy: str = "fixed") -> dict:
+    def solve_automated(
+        self,
+        target: str,
+        guess_algorithm: str = "random",
+        start_strategy: str = "fixed",
+    ) -> dict:
         """Solve with detailed tracking for automated analysis.
-        Returns dictionary with solving details including word list reduction tracking."""
+        Returns dictionary with solving details including word list reduction tracking.
+        """
         self.possible_words = self.word_list.copy()
         self.guesses = []
         self.feedbacks = []
@@ -959,7 +1180,9 @@ class WordleSolver:
         elif guess_algorithm == "entropy":
             choose_func = lambda: self.choose_guess_entropy(False)
         elif guess_algorithm == "frequency":
-            choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
+            choose_func = lambda: self.choose_guess_frequency(
+                start_strategy=start_strategy
+            )
         elif guess_algorithm == "information":
             choose_func = lambda: self.choose_guess_information(False)
         elif guess_algorithm == "smart_hybrid":
@@ -971,7 +1194,9 @@ class WordleSolver:
         elif guess_algorithm == "optimal_transition":
             choose_func = lambda: self.choose_guess_optimal_transition()
         else:
-            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', 'ultra_efficient', 'adaptive_hybrid', or 'optimal_transition'.")
+            raise ValueError(
+                "Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'smart_hybrid', 'ultra_efficient', 'adaptive_hybrid', or 'optimal_transition'."
+            )
 
         solved = False
         attempts = 0
@@ -986,7 +1211,7 @@ class WordleSolver:
             self.feedbacks.append(feedback)
             attempts = attempt + 1
 
-            if feedback == 'G' * self.word_length:
+            if feedback == "G" * self.word_length:
                 solved = True
                 break
 
@@ -994,20 +1219,27 @@ class WordleSolver:
             word_list_sizes.append(len(self.possible_words))
 
             # Log solver state if we just completed the 6th guess without solving
-            if attempt + 1 == 6 and feedback != 'G' * self.word_length:
-                write_solver_state_after_6(target, guess_algorithm, start_strategy, self.possible_words)
+            if attempt + 1 == 6 and feedback != "G" * self.word_length:
+                write_solver_state_after_6(
+                    target, guess_algorithm, start_strategy, self.possible_words
+                )
 
         return {
-            'solved': solved,
-            'attempts': attempts,
-            'word_list_sizes': word_list_sizes,
-            'guesses': self.guesses.copy(),
-            'feedbacks': self.feedbacks.copy(),
-            'algorithm': guess_algorithm,
-            'strategy': start_strategy
+            "solved": solved,
+            "attempts": attempts,
+            "word_list_sizes": word_list_sizes,
+            "guesses": self.guesses.copy(),
+            "feedbacks": self.feedbacks.copy(),
+            "algorithm": guess_algorithm,
+            "strategy": start_strategy,
         }
 
-    def solve(self, target: str, guess_algorithm: str = "random", start_strategy: str = "fixed") -> Tuple[bool, int]:
+    def solve(
+        self,
+        target: str,
+        guess_algorithm: str = "random",
+        start_strategy: str = "fixed",
+    ) -> Tuple[bool, int]:
         """Attempt to solve Wordle for the given target word using specified guess algorithm.
         guess_algorithm: 'random', 'entropy', 'frequency', or 'information'.
         start_strategy: For frequency algorithm: 'fixed', 'random', 'highest', 'lowest'.
@@ -1020,9 +1252,13 @@ class WordleSolver:
         if guess_algorithm == "random":
             choose_func = lambda: self.choose_guess_random()
         elif guess_algorithm == "entropy":
-            choose_func = lambda: self.choose_guess_entropy(False)  # Never use optimal start for entropy
+            choose_func = lambda: self.choose_guess_entropy(
+                False
+            )  # Never use optimal start for entropy
         elif guess_algorithm == "frequency":
-            choose_func = lambda: self.choose_guess_frequency(start_strategy=start_strategy)
+            choose_func = lambda: self.choose_guess_frequency(
+                start_strategy=start_strategy
+            )
         elif guess_algorithm == "information":
             choose_func = lambda: self.choose_guess_information(False)
         elif guess_algorithm == "adaptive_hybrid":
@@ -1030,7 +1266,9 @@ class WordleSolver:
         elif guess_algorithm == "optimal_transition":
             choose_func = lambda: self.choose_guess_optimal_transition()
         else:
-            raise ValueError("Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'adaptive_hybrid', or 'optimal_transition'.")
+            raise ValueError(
+                "Invalid guess_algorithm. Use 'random', 'entropy', 'frequency', 'information', 'adaptive_hybrid', or 'optimal_transition'."
+            )
 
         for attempt in range(self.max_guesses):
             guess = choose_func()
@@ -1044,23 +1282,30 @@ class WordleSolver:
             algorithm_desc = f"{guess_algorithm}"
             if attempt == 0 and start_strategy != "fixed":
                 algorithm_desc += f" ({start_strategy} start)"
-            print(f"Guess {attempt + 1}: {guess} -> {feedback} (Algorithm: {algorithm_desc})")
+            print(
+                f"Guess {attempt + 1}: {guess} -> {feedback} (Algorithm: {algorithm_desc})"
+            )
 
-            if feedback == 'G' * self.word_length:
+            if feedback == "G" * self.word_length:
                 return True, attempt + 1
 
             self.filter_words(guess, feedback)
 
             # Log solver state if we just completed the 6th guess without solving
-            if attempt + 1 == 6 and feedback != 'G' * self.word_length:
-                write_solver_state_after_6(target, guess_algorithm, start_strategy, self.possible_words)
+            if attempt + 1 == 6 and feedback != "G" * self.word_length:
+                write_solver_state_after_6(
+                    target, guess_algorithm, start_strategy, self.possible_words
+                )
 
         return False, self.max_guesses
 
-def calculate_word_scores(word: str, possible_words: List[str], search_space: List[str]) -> dict:
+
+def calculate_word_scores(
+    word: str, possible_words: List[str], search_space: List[str]
+) -> dict:
     """Calculate entropy, frequency, and information scores for a word for display purposes."""
     if not possible_words:
-        return {'entropy': 0.0, 'frequency': 0, 'likelihood': 0.0, 'information': 0.0}
+        return {"entropy": 0.0, "frequency": 0, "likelihood": 0.0, "information": 0.0}
 
     # Calculate entropy score
     pattern_counts = Counter()
@@ -1090,14 +1335,17 @@ def calculate_word_scores(word: str, possible_words: List[str], search_space: Li
     wordfreq_score = get_word_frequency_score(word)
 
     return {
-        'entropy': entropy,
-        'frequency': freq_score,
-        'likelihood': likelihood_score,
-        'information': info_score,
-        'wordfreq': wordfreq_score
+        "entropy": entropy,
+        "frequency": freq_score,
+        "likelihood": likelihood_score,
+        "information": info_score,
+        "wordfreq": wordfreq_score,
     }
 
-def get_valid_popular_words(possible_words: List[str], guessed_words: List[str]) -> List[str]:
+
+def get_valid_popular_words(
+    possible_words: List[str], guessed_words: List[str]
+) -> List[str]:
     """Get popular words that are still valid and haven't been guessed yet."""
     valid_popular = []
 
@@ -1117,15 +1365,16 @@ def get_valid_popular_words(possible_words: List[str], guessed_words: List[str])
 
     return valid_popular
 
+
 def interactive_mode():
     """Interactive mode where user sees suggestions from all algorithms and chooses."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🎯 INTERACTIVE WORDLE SOLVER - MULTI-ALGORITHM MODE")
-    print("="*60)
+    print("=" * 60)
     print("🤖 You'll see suggestions from all algorithms at each step.")
     print("📊 Each suggestion includes entropy and frequency scores.")
     print("🎮 Choose the word you want to play, or enter your own.")
-    print("="*60)
+    print("=" * 60)
 
     # Load word list
     word_file_path = os.path.join(DATA_DIR, "words_alpha5.txt")
@@ -1141,15 +1390,15 @@ def interactive_mode():
     if not is_wordfreq_available():
         print("\n⚠️  Word frequency scoring unavailable (install 'wordfreq' library)")
         print("   WF column will show 'N/A' in suggestions")
-    
+
     # Initialize multiple solvers (one for each algorithm)
     algorithms = {
-        'entropy': 'Entropy',
-        'frequency': 'Letter-Frequency',
-        'information': 'Information',
-        'ultra_efficient': 'Ultra-Efficient',
-        'adaptive_hybrid': 'Adaptive-Hybrid',
-        'optimal_transition': 'Optimal-Transition'
+        "entropy": "Entropy",
+        "frequency": "Letter-Frequency",
+        "information": "Information",
+        "ultra_efficient": "Ultra-Efficient",
+        "adaptive_hybrid": "Adaptive-Hybrid",
+        "optimal_transition": "Optimal-Transition",
     }
 
     solvers = {}
@@ -1190,7 +1439,7 @@ def interactive_mode():
                     break
                 else:
                     print(f"'{target}' is not in the word list. Continue anyway? (y/n)")
-                    if input().strip().lower().startswith('y'):
+                    if input().strip().lower().startswith("y"):
                         break
             else:
                 print("Please enter exactly 5 letters.")
@@ -1213,7 +1462,9 @@ def interactive_mode():
         print("🤖 AI algorithms will suggest words at each step...\n")
 
         try:
-            result = play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
+            result = play_multi_algorithm_game(
+                solvers, algorithms, target, mode="automated"
+            )
             print(f"\n🎯 The target word was: {target.upper()}")
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
@@ -1223,13 +1474,19 @@ def interactive_mode():
     else:
         # Manual feedback mode (real Wordle)
         print(f"\n🎮 REAL WORDLE MODE - MULTI-ALGORITHM ASSISTANT")
-        print("="*60)
-        print("🌐 Play on the real Wordle website and get suggestions from all algorithms.")
-        print("📝 Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)")
+        print("=" * 60)
+        print(
+            "🌐 Play on the real Wordle website and get suggestions from all algorithms."
+        )
+        print(
+            "📝 Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)"
+        )
         print("❌ Special: R=Rejected (if Wordle doesn't accept the word)")
-        print("📘 Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray")
+        print(
+            "📘 Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray"
+        )
         print("🔄 Rejected words don't count toward your 6-guess limit.")
-        print("="*60)
+        print("=" * 60)
 
         try:
             play_multi_algorithm_game(solvers, algorithms, None, mode="manual")
@@ -1243,21 +1500,24 @@ def interactive_mode():
         # Ask if user wants to play again
         print(f"\nWould you like to play again? (y/n): ", end="")
         try:
-            if input().strip().lower().startswith('y'):
+            if input().strip().lower().startswith("y"):
                 interactive_mode()
         except KeyboardInterrupt:
             pass
 
     print("Thanks for playing! 👋")
 
-def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = None, mode: str = "automated"):
+
+def play_multi_algorithm_game(
+    solvers: dict, algorithms: dict, target: str = None, mode: str = "automated"
+):
     """Play a game showing suggestions from all algorithms."""
 
     attempt = 0
     max_attempts = 6  # Standard Wordle limit
 
     print(f"\n{'🎮 GAME START' if mode == 'manual' else '🤖 SOLVING'}")
-    print("="*60)
+    print("=" * 60)
 
     while attempt < max_attempts:
         attempt += 1
@@ -1273,18 +1533,23 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
             if not solver.possible_words:
                 suggestion = "No words left!"
-                scores = {'entropy': 0, 'frequency': 0, 'likelihood': 0, 'information': 0}
+                scores = {
+                    "entropy": 0,
+                    "frequency": 0,
+                    "likelihood": 0,
+                    "information": 0,
+                }
             else:
                 # Get suggestion based on algorithm
-                if alg_key == 'entropy':
+                if alg_key == "entropy":
                     suggestion = solver.choose_guess_entropy(False)
-                elif alg_key == 'frequency':
+                elif alg_key == "frequency":
                     suggestion = solver.choose_guess_frequency(start_strategy="fixed")
-                elif alg_key == 'information':
+                elif alg_key == "information":
                     suggestion = solver.choose_guess_information(False)
-                elif alg_key == 'ultra_efficient':
+                elif alg_key == "ultra_efficient":
                     suggestion = solver.choose_guess_ultra_efficient()
-                elif alg_key == 'adaptive_hybrid':
+                elif alg_key == "adaptive_hybrid":
                     suggestion = solver.choose_guess_adaptive_hybrid()
                 else:
                     suggestion = solver.choose_guess_random()
@@ -1296,13 +1561,15 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                     if isogram_space:
                         search_space = isogram_space
 
-                scores = calculate_word_scores(suggestion, solver.possible_words, search_space)
+                scores = calculate_word_scores(
+                    suggestion, solver.possible_words, search_space
+                )
 
             suggestions[alg_key] = {
-                'word': suggestion,
-                'name': alg_name,
-                'scores': scores,
-                'remaining': len(solver.possible_words)
+                "word": suggestion,
+                "name": alg_name,
+                "scores": scores,
+                "remaining": len(solver.possible_words),
             }
 
             # Track word-to-algorithm mapping for duplicate detection
@@ -1317,7 +1584,7 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         used_words = set()
 
         for alg_key, data in suggestions.items():
-            word = data['word']
+            word = data["word"]
             word_lower = word.lower()
 
             if word == "No words left!":
@@ -1333,21 +1600,29 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                 if solver.possible_words:
                     # Simple approach: find available words not already used
-                    available_words = [w for w in solver.possible_words if w.lower() not in used_words]
+                    available_words = [
+                        w for w in solver.possible_words if w.lower() not in used_words
+                    ]
                     if available_words:
                         # Take the first available word as alternative
                         alternative_word = available_words[0]
                         search_space = solver.possible_words.copy()
-                        if should_prefer_isograms(solver.possible_words, len(solver.guesses)):
-                            isogram_space = solver.filter_words_unique_letters(search_space)
+                        if should_prefer_isograms(
+                            solver.possible_words, len(solver.guesses)
+                        ):
+                            isogram_space = solver.filter_words_unique_letters(
+                                search_space
+                            )
                             if isogram_space:
                                 search_space = isogram_space
-                        alt_scores = calculate_word_scores(alternative_word, solver.possible_words, search_space)
+                        alt_scores = calculate_word_scores(
+                            alternative_word, solver.possible_words, search_space
+                        )
                         unique_suggestions[alg_key] = {
-                            'word': alternative_word,
-                            'name': data['name'],
-                            'scores': alt_scores,
-                            'remaining': len(solver.possible_words)
+                            "word": alternative_word,
+                            "name": data["name"],
+                            "scores": alt_scores,
+                            "remaining": len(solver.possible_words),
                         }
                         used_words.add(alternative_word.lower())
                         alternative_found = True
@@ -1355,18 +1630,33 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
                 if not alternative_found:
                     # Fallback: mark as no unique suggestion available
                     unique_suggestions[alg_key] = {
-                        'word': f"(duplicate)",
-                        'name': data['name'],
-                        'scores': {'entropy': 0, 'frequency': 0, 'likelihood': 0, 'information': 0},
-                        'remaining': len(solver.possible_words) if solver.possible_words else 0
+                        "word": f"(duplicate)",
+                        "name": data["name"],
+                        "scores": {
+                            "entropy": 0,
+                            "frequency": 0,
+                            "likelihood": 0,
+                            "information": 0,
+                        },
+                        "remaining": (
+                            len(solver.possible_words) if solver.possible_words else 0
+                        ),
                     }
 
         # Get valid popular words (excluding already suggested algorithm words and previously guessed words)
-        solver_ref = list(solvers.values())[0]  # Use first solver as reference for game state
-        guessed_words = solver_ref.guesses if hasattr(solver_ref, 'guesses') else []
-        algorithm_words = [data['word'].lower() for data in unique_suggestions.values() if data['word'] not in ["No words left!", "(duplicate)"]]
+        solver_ref = list(solvers.values())[
+            0
+        ]  # Use first solver as reference for game state
+        guessed_words = solver_ref.guesses if hasattr(solver_ref, "guesses") else []
+        algorithm_words = [
+            data["word"].lower()
+            for data in unique_suggestions.values()
+            if data["word"] not in ["No words left!", "(duplicate)"]
+        ]
 
-        valid_popular = get_valid_popular_words(solver_ref.possible_words, guessed_words + algorithm_words)
+        valid_popular = get_valid_popular_words(
+            solver_ref.possible_words, guessed_words + algorithm_words
+        )
 
         # Consolidate all suggestions into one list
         all_suggestions = []
@@ -1374,45 +1664,59 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         # Add algorithm suggestions (excluding "No words left!" and "(duplicate)" entries)
         for alg_key, data in unique_suggestions.items():
             # Skip entries that have no valid suggestions
-            if data['word'] not in ["No words left!", "(duplicate)"]:
-                all_suggestions.append({
-                    'word': data['word'],
-                    'type': data['name'],
-                    'scores': data['scores'],
-                    'remaining': data['remaining'],
-                    'source': 'algorithm'
-                })
+            if data["word"] not in ["No words left!", "(duplicate)"]:
+                all_suggestions.append(
+                    {
+                        "word": data["word"],
+                        "type": data["name"],
+                        "scores": data["scores"],
+                        "remaining": data["remaining"],
+                        "source": "algorithm",
+                    }
+                )
 
         # Add popular words with their scores
         if valid_popular:
             for word in valid_popular:
                 # Calculate scores for this popular word
                 search_space = solver_ref.possible_words.copy()
-                if should_prefer_isograms(solver_ref.possible_words, len(solver_ref.guesses)):
+                if should_prefer_isograms(
+                    solver_ref.possible_words, len(solver_ref.guesses)
+                ):
                     isogram_space = solver_ref.filter_words_unique_letters(search_space)
                     if isogram_space:
                         search_space = isogram_space
 
-                scores = calculate_word_scores(word, solver_ref.possible_words, search_space)
+                scores = calculate_word_scores(
+                    word, solver_ref.possible_words, search_space
+                )
 
-                all_suggestions.append({
-                    'word': word,
-                    'type': 'Popular',
-                    'scores': scores,
-                    'remaining': len(solver_ref.possible_words),
-                    'source': 'popular'
-                })
+                all_suggestions.append(
+                    {
+                        "word": word,
+                        "type": "Popular",
+                        "scores": scores,
+                        "remaining": len(solver_ref.possible_words),
+                        "source": "popular",
+                    }
+                )
 
         # Sort all suggestions by composite score (wordfreq + letter frequency, if available)
         def get_sort_key(suggestion):
-            scores = suggestion['scores']
+            scores = suggestion["scores"]
             # Use wordfreq as primary, letter frequency as secondary if available
-            wordfreq_score = scores.get('wordfreq', 0)
-            lettfreq_score = scores.get('frequency', 0) / 1000.0 if scores.get('frequency', 0) > 0 else 0
+            wordfreq_score = scores.get("wordfreq", 0)
+            lettfreq_score = (
+                scores.get("frequency", 0) / 1000.0
+                if scores.get("frequency", 0) > 0
+                else 0
+            )
 
             # Normalize wordfreq score to 0-1 range for composite calculation
             # New wordfreq scale: 0 = not found, ~1-2 = very rare, ~7 = most common
-            wordfreq_normalized = min(1.0, wordfreq_score / 7.0) if wordfreq_score > 0 else 0.0
+            wordfreq_normalized = (
+                min(1.0, wordfreq_score / 7.0) if wordfreq_score > 0 else 0.0
+            )
 
             # Weighted combination: 70% real-world frequency, 30% letter frequency
             return wordfreq_normalized * 0.7 + lettfreq_score * 0.3
@@ -1420,19 +1724,28 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         all_suggestions.sort(key=get_sort_key, reverse=True)
 
         # Display consolidated and sorted suggestions
-        print("🎯 Word Suggestions (sorted by real-world frequency):")
-        print(f"     {'Word':<6} {'Type':<18} {'Entropy':<7} {'LtFq':<5} {'Like':<5} {'Info':<5} {'WF':<5}")
+        if is_wordfreq_available():
+            print("🎯 Word Suggestions (sorted by real-world frequency):")
+        else:
+            print(
+                "🎯 Word Suggestions (sorted by letter frequency - wordfreq unavailable):"
+            )
+        print(
+            f"     {'Word':<6} {'Type':<18} {'Entropy':<7} {'LtFq':<5} {'Like':<5} {'Info':<5} {'WF':<5}"
+        )
         print("-" * 79)
 
         for i, suggestion in enumerate(all_suggestions, 1):
-            word = suggestion['word']
-            word_type = suggestion['type']
-            scores = suggestion['scores']
+            word = suggestion["word"]
+            word_type = suggestion["type"]
+            scores = suggestion["scores"]
 
-            print(f"{i:2d}. {word.upper():<6} {word_type:<18} "
-                  f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
-                  f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} "
-                  f"{format_wordfreq_score(scores.get('wordfreq', 0)):<5}")
+            print(
+                f"{i:2d}. {word.upper():<6} {word_type:<18} "
+                f"{scores['entropy']:<7.2f} {scores['frequency']:<5} "
+                f"{scores['likelihood']:<5.2f} {scores.get('information', 0):<5.2f} "
+                f"{format_wordfreq_score(scores.get('wordfreq', 0)):<5}"
+            )
 
         total_choices = len(all_suggestions)
 
@@ -1443,7 +1756,11 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         while True:
             try:
-                user_input = input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ").strip().lower()
+                user_input = (
+                    input(f"\n{Colors.YELLOW}Your choice:{Colors.RESET} ")
+                    .strip()
+                    .lower()
+                )
 
                 # Check if it's a number (selection)
                 if user_input.isdigit() and 1 <= int(user_input) <= total_choices:
@@ -1451,8 +1768,8 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                     # Select from consolidated list
                     suggestion = all_suggestions[choice_num - 1]
-                    chosen_word = suggestion['word']
-                    chosen_alg = suggestion['type']
+                    chosen_word = suggestion["word"]
+                    chosen_alg = suggestion["type"]
 
                     if chosen_word in ["No words left!", "(duplicate)"]:
                         print("❌ That suggestion has no valid words available!")
@@ -1485,24 +1802,38 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
             print(f"\n🎯 {chosen_word.upper()} → {feedback}")
 
             # Check if solved
-            if feedback == 'G' * 5:
+            if feedback == "G" * 5:
                 print(f"\n🎉 Solved in {attempt} guesses using {chosen_alg}!")
-                return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
+                return {"solved": True, "attempts": attempt, "algorithm": chosen_alg}
 
         else:
             # Manual mode - get feedback from user
             while True:
                 try:
-                    feedback_input = input(f"\n🌐 Enter Wordle feedback for '{chosen_word.upper()}' (5 chars: G/Y/X, or 'R' if rejected): ").strip().upper()
+                    feedback_input = (
+                        input(
+                            f"\n🌐 Enter Wordle feedback for '{chosen_word.upper()}' (5 chars: G/Y/X, or 'R' if rejected): "
+                        )
+                        .strip()
+                        .upper()
+                    )
 
-                    if feedback_input == 'R':
+                    if feedback_input == "R":
                         print(f"❌ Word '{chosen_word.upper()}' was rejected by Wordle")
                         # Remove word from all solvers using shared approach
                         first_solver = list(solvers.values())[0]
-                        print(f"    Removing '{chosen_word}' from word lists (rejected by Wordle)")
-                        updated_word_list = remove_word_from_list(first_solver.word_list, chosen_word)
-                        updated_possible_words = remove_word_from_list(first_solver.possible_words, chosen_word)
-                        print(f"    Word lists updated: {len(updated_word_list)} total words, {len(updated_possible_words)} possible words")
+                        print(
+                            f"    Removing '{chosen_word}' from word lists (rejected by Wordle)"
+                        )
+                        updated_word_list = remove_word_from_list(
+                            first_solver.word_list, chosen_word
+                        )
+                        updated_possible_words = remove_word_from_list(
+                            first_solver.possible_words, chosen_word
+                        )
+                        print(
+                            f"    Word lists updated: {len(updated_word_list)} total words, {len(updated_possible_words)} possible words"
+                        )
 
                         # Apply the same updated lists to all solvers
                         for solver in solvers.values():
@@ -1511,35 +1842,57 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
                         # Save updated word list to file if we have a file path
                         if first_solver.word_file_path:
-                            if save_words_to_file(first_solver.word_file_path, updated_word_list):
-                                print(f"    Updated word list saved to {first_solver.word_file_path}")
+                            if save_words_to_file(
+                                first_solver.word_file_path, updated_word_list
+                            ):
+                                print(
+                                    f"    Updated word list saved to {first_solver.word_file_path}"
+                                )
                             else:
-                                print(f"    Warning: Could not save updated word list to {first_solver.word_file_path}")
+                                print(
+                                    f"    Warning: Could not save updated word list to {first_solver.word_file_path}"
+                                )
 
                         print("🔄 Getting new suggestions...")
                         attempt -= 1  # Don't count rejected words
                         break
 
-                    elif len(feedback_input) == 5 and all(c in 'GYX' for c in feedback_input):
+                    elif len(feedback_input) == 5 and all(
+                        c in "GYX" for c in feedback_input
+                    ):
                         feedback = feedback_input
-                        print(f"📝 Feedback recorded: {chosen_word.upper()} → {feedback}")
+                        print(
+                            f"📝 Feedback recorded: {chosen_word.upper()} → {feedback}"
+                        )
 
                         # Check if solved
                         if feedback == "GGGGG":
-                            print(f"\n🎉 Congratulations! You solved it in {attempt} guesses!")
+                            print(
+                                f"\n🎉 Congratulations! You solved it in {attempt} guesses!"
+                            )
                             print(f"🏆 Winning algorithm: {chosen_alg}")
-                            return {'solved': True, 'attempts': attempt, 'algorithm': chosen_alg}
+                            return {
+                                "solved": True,
+                                "attempts": attempt,
+                                "algorithm": chosen_alg,
+                            }
                         break
 
                     else:
-                        print("❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected.")
+                        print(
+                            "❌ Please enter exactly 5 characters (G/Y/X) or 'R' for rejected."
+                        )
 
                 except KeyboardInterrupt:
                     print("\n\nGoodbye!")
-                    return {'solved': False, 'attempts': attempt, 'algorithm': 'Interrupted'}
+                    return {
+                        "solved": False,
+                        "attempts": attempt,
+                        "algorithm": "Interrupted",
+                    }
 
         # If word was rejected, continue to next iteration
-        if mode == "manual" and feedback_input == 'R':
+        if mode == "manual" and feedback_input == "R":
             continue
 
         # Update all solvers with the guess and feedback
@@ -1549,7 +1902,8 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
 
         # Perform filtering once
         filtered_words = [
-            word for word in first_solver.possible_words
+            word
+            for word in first_solver.possible_words
             if is_valid_word(word, chosen_word, feedback)
         ]
         new_count = len(filtered_words)
@@ -1559,19 +1913,26 @@ def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = Non
         for solver in solvers.values():
             solver.guesses.append(chosen_word)
             solver.feedbacks.append(feedback)
-            solver.possible_words = filtered_words.copy()  # Share the same filtered result
+            solver.possible_words = (
+                filtered_words.copy()
+            )  # Share the same filtered result
 
         # Show remaining words count
-        remaining_counts = {alg: len(solver.possible_words) for alg, solver in solvers.items()}
+        remaining_counts = {
+            alg: len(solver.possible_words) for alg, solver in solvers.items()
+        }
         print(f"\n📊 Words remaining: {remaining_counts}")
 
         # Check if any solver has no words left
         if any(count == 0 for count in remaining_counts.values()):
-            print("⚠️  Some algorithms have no possible words left! Check your feedback.")
+            print(
+                "⚠️  Some algorithms have no possible words left! Check your feedback."
+            )
 
     # Game over
     print(f"\n😞 Game over! Used all {max_attempts} guesses.")
-    return {'solved': False, 'attempts': max_attempts, 'algorithm': 'None'}
+    return {"solved": False, "attempts": max_attempts, "algorithm": "None"}
+
 
 def main():
     """Main function - choose between interactive mode and automated testing."""
@@ -1595,10 +1956,11 @@ def main():
             print("\nGoodbye!")
             return
 
+
 def automated_testing():
     """Run automated testing with user-selected word file."""
     print("\n🤖 AUTOMATED TESTING MODE")
-    print("="*60)
+    print("=" * 60)
 
     # Load word list from file
     word_list = load_words(os.path.join(DATA_DIR, "words_alpha5.txt"))
@@ -1622,7 +1984,7 @@ def automated_testing():
     test_file_options = {
         "1": ("words_past5_date.txt", "all past Wordle words"),
         "2": ("words_missing.txt", "failed/missing words"),
-        "3": ("words_challenging.txt", "challenging words")
+        "3": ("words_challenging.txt", "challenging words"),
     }
 
     while True:
@@ -1647,7 +2009,13 @@ def automated_testing():
         # Prompt user for how many words to test
         while True:
             try:
-                user_input = input(f"How many words to test? (number, 'all', or Enter for default 10): ").strip().lower()
+                user_input = (
+                    input(
+                        f"How many words to test? (number, 'all', or Enter for default 10): "
+                    )
+                    .strip()
+                    .lower()
+                )
 
                 if not user_input:  # Empty input (just pressed Enter)
                     num_words = min(10, len(test_words_from_file))
@@ -1661,7 +2029,9 @@ def automated_testing():
                         print("Please enter a positive number.")
                         continue
                     elif num_words > len(test_words_from_file):
-                        print(f"Only {len(test_words_from_file)} words available. Using all {len(test_words_from_file)} words.")
+                        print(
+                            f"Only {len(test_words_from_file)} words available. Using all {len(test_words_from_file)} words."
+                        )
                         num_words = len(test_words_from_file)
                     break
             except ValueError:
@@ -1671,13 +2041,26 @@ def automated_testing():
                 return
 
         test_words = test_words_from_file[:num_words]
-        print(f"Using {len(test_words)} {description}: {[w.upper() for w in test_words]}")
+        print(
+            f"Using {len(test_words)} {description}: {[w.upper() for w in test_words]}"
+        )
     else:
         print(f"{description.capitalize()} file not found, using default test words")
-        test_words = ["smile", "house", "grape"]  # Using fewer words for manageable output
+        test_words = [
+            "smile",
+            "house",
+            "grape",
+        ]  # Using fewer words for manageable output
         print(f"Using default test words: {[w.upper() for w in test_words]}")
 
-    algorithms = ["entropy", "frequency", "information", "ultra_efficient", "adaptive_hybrid", "optimal_transition"]
+    algorithms = [
+        "entropy",
+        "frequency",
+        "information",
+        "ultra_efficient",
+        "adaptive_hybrid",
+        "optimal_transition",
+    ]
 
     # Track results for summary
     results = {}
@@ -1696,14 +2079,16 @@ def automated_testing():
                 # Entropy algorithm: only test fixed start
                 print(f"\nTesting {algorithm} algorithm (fixed start):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
-                print(format_result(result['solved'], result['attempts']))
+                result = solver.solve_automated(
+                    target, guess_algorithm=algorithm, start_strategy="fixed"
+                )
+                print(format_result(result["solved"], result["attempts"]))
 
                 # Log failed words
-                if not result['solved']:
+                if not result["solved"]:
                     write_failed_word(target, algorithm, "fixed")
                 # Log challenging words (solved but > 6 guesses)
-                elif result['solved'] and result['attempts'] > 6:
+                elif result["solved"] and result["attempts"] > 6:
                     write_challenging_word(target)
 
                 # Track results
@@ -1716,14 +2101,16 @@ def automated_testing():
                 # Frequency algorithm: only test fixed start
                 print(f"\nTesting {algorithm} algorithm (fixed start):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
-                print(format_result(result['solved'], result['attempts']))
+                result = solver.solve_automated(
+                    target, guess_algorithm=algorithm, start_strategy="fixed"
+                )
+                print(format_result(result["solved"], result["attempts"]))
 
                 # Log failed words
-                if not result['solved']:
+                if not result["solved"]:
                     write_failed_word(target, algorithm, "fixed")
                 # Log challenging words (solved but > 6 guesses)
-                elif result['solved'] and result['attempts'] > 6:
+                elif result["solved"] and result["attempts"] > 6:
                     write_challenging_word(target)
 
                 # Track results
@@ -1736,14 +2123,16 @@ def automated_testing():
                 # Ultra efficient algorithm: speed optimized
                 print(f"\nTesting {algorithm} algorithm (speed optimized):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
-                print(format_result(result['solved'], result['attempts']))
+                result = solver.solve_automated(
+                    target, guess_algorithm=algorithm, start_strategy="fixed"
+                )
+                print(format_result(result["solved"], result["attempts"]))
 
                 # Log failed words
-                if not result['solved']:
+                if not result["solved"]:
                     write_failed_word(target, algorithm, "speed")
                 # Log challenging words (solved but > 6 guesses)
-                elif result['solved'] and result['attempts'] > 6:
+                elif result["solved"] and result["attempts"] > 6:
                     write_challenging_word(target)
 
                 # Track results
@@ -1756,11 +2145,13 @@ def automated_testing():
                 # Adaptive hybrid algorithm: dynamic entropy/frequency weighting
                 print(f"\nTesting {algorithm} algorithm (dynamic weighting):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
-                print(format_result(result['solved'], result['attempts']))
+                result = solver.solve_automated(
+                    target, guess_algorithm=algorithm, start_strategy="fixed"
+                )
+                print(format_result(result["solved"], result["attempts"]))
 
                 # Log failed words
-                if not result['solved']:
+                if not result["solved"]:
                     write_challenging_word(target)
 
                 # Track results
@@ -1773,11 +2164,13 @@ def automated_testing():
                 # Optimal transition algorithm: entropy→wordfreq at ≤50 words
                 print(f"\nTesting {algorithm} algorithm (≤50 word transition):")
                 solver = WordleSolver(word_list)
-                result = solver.solve_automated(target, guess_algorithm=algorithm, start_strategy="fixed")
-                print(format_result(result['solved'], result['attempts']))
+                result = solver.solve_automated(
+                    target, guess_algorithm=algorithm, start_strategy="fixed"
+                )
+                print(format_result(result["solved"], result["attempts"]))
 
                 # Log failed words
-                if not result['solved']:
+                if not result["solved"]:
                     write_challenging_word(target)
 
                 # Track results
@@ -1803,15 +2196,23 @@ def automated_testing():
     for algorithm_key in sorted(results.keys()):
         algorithm_results = results[algorithm_key]
         total_tests = len(algorithm_results)
-        successful_solves = sum(1 for result in algorithm_results if result['solved'])
+        successful_solves = sum(1 for result in algorithm_results if result["solved"])
         failed_solves = total_tests - successful_solves
 
         # Count wins (solved within 6 guesses) and losses (exceeded 6 guesses or failed)
-        wins = sum(1 for result in algorithm_results if result['solved'] and result['attempts'] <= 6)
-        exceeded_limit = sum(1 for result in algorithm_results if result['attempts'] > 6)
+        wins = sum(
+            1
+            for result in algorithm_results
+            if result["solved"] and result["attempts"] <= 6
+        )
+        exceeded_limit = sum(
+            1 for result in algorithm_results if result["attempts"] > 6
+        )
 
         if successful_solves > 0:
-            successful_attempts = [result['attempts'] for result in algorithm_results if result['solved']]
+            successful_attempts = [
+                result["attempts"] for result in algorithm_results if result["solved"]
+            ]
             avg_attempts = sum(successful_attempts) / len(successful_attempts)
             min_attempts = min(successful_attempts)
             max_attempts = max(successful_attempts)
@@ -1829,20 +2230,33 @@ def automated_testing():
             color = Colors.RED
 
         print(f"{color}{algorithm_key:20}{Colors.RESET} | ", end="")
-        print(f"Solve: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ", end="")
+        print(
+            f"Solve: {successful_solves:2}/{total_tests} ({successful_solves/total_tests*100:5.1f}%) | ",
+            end="",
+        )
         print(f"Win: {wins:2}/{total_tests} ({wins/total_tests*100:5.1f}%) | ", end="")
 
         if successful_solves > 0:
-            avg_color = Colors.GREEN if avg_attempts <= 4 else Colors.YELLOW if avg_attempts <= 6 else Colors.RED
+            avg_color = (
+                Colors.GREEN
+                if avg_attempts <= 4
+                else Colors.YELLOW if avg_attempts <= 6 else Colors.RED
+            )
             print(f"Avg: {avg_color}{avg_attempts:4.1f}{Colors.RESET} | ", end="")
             print(f"Range: {min_attempts}-{max_attempts}")
         else:
             print(f"Avg: {Colors.RED} N/A{Colors.RESET} | Range: N/A")
 
     print(f"\n{Colors.GREEN}Legend:{Colors.RESET}")
-    print(f"  {Colors.GREEN}Green{Colors.RESET}: Excellent performance (100% success, avg ≤ 4 guesses)")
-    print(f"  {Colors.YELLOW}Yellow{Colors.RESET}: Good performance (100% success, avg ≤ 6 guesses)")
-    print(f"  {Colors.RED}Red{Colors.RESET}: Poor performance (failures or avg > 6 guesses)")
+    print(
+        f"  {Colors.GREEN}Green{Colors.RESET}: Excellent performance (100% success, avg ≤ 4 guesses)"
+    )
+    print(
+        f"  {Colors.YELLOW}Yellow{Colors.RESET}: Good performance (100% success, avg ≤ 6 guesses)"
+    )
+    print(
+        f"  {Colors.RED}Red{Colors.RESET}: Poor performance (failures or avg > 6 guesses)"
+    )
 
     # Add word reduction analysis
     if reduction_analysis:
@@ -1853,13 +2267,15 @@ def automated_testing():
         print()
 
         # Sort methods by average reduction effectiveness
-        sorted_methods = sorted(reduction_analysis.items(),
-                              key=lambda x: x[1]['avg_reduction_per_step'],
-                              reverse=True)
+        sorted_methods = sorted(
+            reduction_analysis.items(),
+            key=lambda x: x[1]["avg_reduction_per_step"],
+            reverse=True,
+        )
 
         for method_key, analysis in sorted_methods:
-            avg_reduction = analysis['avg_reduction_per_step']
-            max_reduction = analysis['max_reduction_seen']
+            avg_reduction = analysis["avg_reduction_per_step"]
+            max_reduction = analysis["max_reduction_seen"]
 
             # Color code based on reduction effectiveness
             if avg_reduction >= 75:
@@ -1875,8 +2291,10 @@ def automated_testing():
 
             # Show step-by-step breakdown for first few steps
             step_info = []
-            for step in sorted(analysis['avg_by_step'].keys())[:3]:  # Show first 3 steps
-                step_avg = analysis['avg_by_step'][step]
+            for step in sorted(analysis["avg_by_step"].keys())[
+                :3
+            ]:  # Show first 3 steps
+                step_avg = analysis["avg_by_step"][step]
                 step_info.append(f"Step {step}: {step_avg:.1f}%")
 
             print(f"({', '.join(step_info)})")
@@ -1891,16 +2309,18 @@ def automated_testing():
             print("(Helps determine optimal weighting for adaptive hybrid algorithms)")
             print()
 
-            print(f"{'Step':<4} | {'Entropy':<8} | {'Frequency':<9} | {'Better':<9} | {'Weights'}")
+            print(
+                f"{'Step':<4} | {'Entropy':<8} | {'Frequency':<9} | {'Better':<9} | {'Weights'}"
+            )
             print("-" * 55)
 
             for step in sorted(step_analysis.keys()):
                 data = step_analysis[step]
-                entropy_avg = data['entropy_avg_reduction']
-                freq_avg = data['frequency_avg_reduction']
-                better = data['better_algorithm']
-                entropy_weight = data['entropy_weight']
-                freq_weight = data['frequency_weight']
+                entropy_avg = data["entropy_avg_reduction"]
+                freq_avg = data["frequency_avg_reduction"]
+                better = data["better_algorithm"]
+                entropy_weight = data["entropy_weight"]
+                freq_weight = data["frequency_weight"]
 
                 # Color code the better algorithm
                 if better == "entropy":
@@ -1908,13 +2328,25 @@ def automated_testing():
                 else:
                     better_display = f"{Colors.YELLOW}frequency{Colors.RESET}"
 
-                print(f"{step:<4} | {entropy_avg:6.1f}%  | {freq_avg:7.1f}%  | {better_display:<17} | E:{entropy_weight:.1f} F:{freq_weight:.1f}")
+                print(
+                    f"{step:<4} | {entropy_avg:6.1f}%  | {freq_avg:7.1f}%  | {better_display:<17} | E:{entropy_weight:.1f} F:{freq_weight:.1f}"
+                )
 
             print(f"\n💡 Adaptive Hybrid Insights:")
 
             # Analyze patterns
-            early_entropy_count = sum(1 for step in [1, 2] if step in step_analysis and step_analysis[step]['better_algorithm'] == 'entropy')
-            late_freq_count = sum(1 for step in [4, 5, 6] if step in step_analysis and step_analysis[step]['better_algorithm'] == 'frequency')
+            early_entropy_count = sum(
+                1
+                for step in [1, 2]
+                if step in step_analysis
+                and step_analysis[step]["better_algorithm"] == "entropy"
+            )
+            late_freq_count = sum(
+                1
+                for step in [4, 5, 6]
+                if step in step_analysis
+                and step_analysis[step]["better_algorithm"] == "frequency"
+            )
 
             if early_entropy_count >= 1:
                 print(f"   • Entropy typically better early game")
@@ -1922,16 +2354,30 @@ def automated_testing():
                 print(f"   • Frequency typically better late game")
 
             # Find crossover
-            crossover = next((step for step in sorted(step_analysis.keys()) if step_analysis[step]['better_algorithm'] == 'frequency'), None)
+            crossover = next(
+                (
+                    step
+                    for step in sorted(step_analysis.keys())
+                    if step_analysis[step]["better_algorithm"] == "frequency"
+                ),
+                None,
+            )
             if crossover:
                 print(f"   • Strategy transition recommended at step {crossover}")
 
         print(f"\n📈 {Colors.GREEN}Best decimator{Colors.RESET}: ", end="")
         best_method, best_analysis = sorted_methods[0]
-        print(f"{best_method} (avg {best_analysis['avg_reduction_per_step']:.1f}% reduction per step)")
+        print(
+            f"{best_method} (avg {best_analysis['avg_reduction_per_step']:.1f}% reduction per step)"
+        )
 
-        print(f"\n💡 Analysis shows which method reduces possibilities fastest at each step.")
-        print(f"   Higher percentages = better at eliminating impossible words quickly.")
+        print(
+            f"\n💡 Analysis shows which method reduces possibilities fastest at each step."
+        )
+        print(
+            f"   Higher percentages = better at eliminating impossible words quickly."
+        )
+
 
 if __name__ == "__main__":
     main()
