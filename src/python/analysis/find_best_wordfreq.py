@@ -13,65 +13,12 @@ from collections import defaultdict
 # Add the parent directory to sys.path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-try:
-    from wordfreq import word_frequency
-    WORDFREQ_AVAILABLE = True
-except ImportError:
-    WORDFREQ_AVAILABLE = False
-    print("❌ wordfreq library not available. Install with: pip install wordfreq")
-    sys.exit(1)
-
+from core.common_utils import (
+    get_raw_word_frequency, scale_word_frequency, WORDFREQ_AVAILABLE,
+    DATA_DIR, ProgressReporter, load_word_list_with_fallback,
+    format_frequency_for_display, format_log10_for_display
+)
 from core.wordle_utils import load_words
-
-# Get the repository root directory (4 levels up from this file)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-DATA_DIR = os.path.join(REPO_ROOT, 'data')
-
-
-def get_raw_frequency(word: str, lang: str = "en", wordlist: str = "large") -> float:
-    """Get raw frequency score from wordfreq library.
-
-    Args:
-        word: Word to get frequency for
-        lang: Language code (default: "en")
-        wordlist: Size of wordlist to use ("small", "large", "best").
-                 "large" contains ~321k words vs "small" with ~29k words.
-    """
-    try:
-        return word_frequency(word, lang, wordlist=wordlist)
-    except Exception:
-        return 0.0
-
-
-def scale_frequency_score(raw_freq: float) -> float:
-    """Scale raw frequency using log10 transform that preserves relative differences.
-
-    The wordfreq library returns frequencies in a wide range:
-    - Very common words: ~1e-2 (0.01)
-    - Common words: ~1e-3 to 1e-4 (0.001 to 0.0001)
-    - Uncommon words: ~1e-5 to 1e-6 (0.00001 to 0.000001)
-    - Very rare words: ~1e-7 or less
-
-    We use a linear transform of log10 to preserve meaningful differences:
-    - Words not found: score = 0.0
-    - log10(1e-8) = -8  → score = 1.0 (baseline rare)
-    - log10(1e-7) = -7  → score = 2.0
-    - log10(1e-6) = -6  → score = 3.0
-    - log10(1e-5) = -5  → score = 4.0
-    - log10(1e-2) = -2  → score = 7.0 (most common)
-
-    Each unit difference in score = 10x difference in frequency.
-    A difference of 3 = 1000x difference in frequency.
-    """
-    if raw_freq <= 0:
-        return 0.0
-
-    # Use log10 and shift so -8 maps to 1.0
-    log_freq = math.log10(raw_freq)
-    score = max(0.0, log_freq + 8.0)
-    return score
-
-
 def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, float, float]],
                                                            List[Tuple[str, float, float]]]:
     """Analyze word frequencies and return sorted lists of most and least common words.
@@ -90,15 +37,15 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
     frequency_distribution = defaultdict(int)
     words_not_found = []
     total_words = len(word_list)
-    step_size = max(1, total_words // 10)  # Calculate step size for 10 progress reports
+
+    # Use common progress reporting
+    progress_reporter = ProgressReporter(total_words, report_interval=10)
 
     for i, word in enumerate(word_list):
-        if i % step_size == 0 or i == total_words - 1:
-            progress_percent = (i / total_words) * 100
-            print(f"   Progress: {i}/{total_words} words processed ({progress_percent:.1f}%)...")
+        progress_reporter.report_progress(i, "words")
 
-        raw_freq = get_raw_frequency(word)
-        scaled_score = scale_frequency_score(raw_freq)
+        raw_freq = get_raw_word_frequency(word)
+        scaled_score = scale_word_frequency(raw_freq)
         word_scores.append((word, raw_freq, scaled_score))
 
         # Track words not found
@@ -119,9 +66,7 @@ def analyze_word_frequencies(word_list: List[str]) -> Tuple[List[Tuple[str, floa
         else:  # 6.0+: log10(-3) and higher
             frequency_distribution['very_common'] += 1
 
-    print(f"   Completed processing {len(word_list)} words (100.0%).")
-
-    # Sort by scaled score
+    progress_reporter.final_report("words")    # Sort by scaled score
     word_scores.sort(key=lambda x: x[2], reverse=True)
 
     # Split into most and least common
@@ -178,18 +123,9 @@ def print_word_analysis(words: List[Tuple[str, float, float]], title: str, max_d
         else:
             classification = "Not Found"
 
-        # Format raw frequency in scientific notation if very small
-        if raw_freq < 1e-4:
-            freq_str = f"{raw_freq:.2e}"
-        else:
-            freq_str = f"{raw_freq:.6f}"
-
-        # Calculate log10 value
-        if raw_freq > 0:
-            log10_val = math.log10(raw_freq)
-            log10_str = f"{log10_val:.2f}"
-        else:
-            log10_str = "N/A"
+        # Format raw frequency and log10 using common utilities
+        freq_str = format_frequency_for_display(raw_freq)
+        log10_str = format_log10_for_display(raw_freq)
 
         print(f"{i:<4} {word.upper():<8} {freq_str:<15} {log10_str:<8} {scaled_score:<12.3f} {classification}")
 
@@ -204,15 +140,10 @@ def main():
         print("   Install with: pip install wordfreq")
         return
 
-    # Load the word list
-    words_file = os.path.join(DATA_DIR, 'words_alpha5.txt')
-    if not os.path.exists(words_file):
-        print(f"❌ Word file not found: {words_file}")
+    # Load the word list using common utilities
+    words = load_word_list_with_fallback("words_alpha5.txt", ["words_alpha5_100.txt"])
+    if not words:
         return
-
-    print(f"📚 Loading words from {words_file}")
-    words = load_words(words_file)
-    print(f"   Loaded {len(words)} five-letter words")
 
     # Analyze frequencies
     most_common, least_common = analyze_word_frequencies(words)
@@ -248,16 +179,10 @@ def main():
     example_words = ['about', 'house', 'water', 'plant', 'crane', 'tares', 'xylem']
     for word in example_words:
         if word in [w[0] for w in most_common + least_common]:
-            raw_freq = get_raw_frequency(word)
-            scaled_score = scale_frequency_score(raw_freq)
-            freq_str = f"{raw_freq:.2e}" if raw_freq < 1e-4 else f"{raw_freq:.6f}"
-
-            # Calculate log10 value
-            if raw_freq > 0:
-                log10_val = math.log10(raw_freq)
-                log10_str = f"{log10_val:.2f}"
-            else:
-                log10_str = "N/A"
+            raw_freq = get_raw_word_frequency(word)
+            scaled_score = scale_word_frequency(raw_freq)
+            freq_str = format_frequency_for_display(raw_freq)
+            log10_str = format_log10_for_display(raw_freq)
 
             print(f"{word.upper():<8} {freq_str:<12} {log10_str:<8} {scaled_score:.3f}")
 

@@ -7,19 +7,7 @@ from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
 from functools import partial
 from ..core.wordle_utils import get_feedback, calculate_entropy, has_unique_letters, is_valid_word, load_words, filter_words_unique_letters, filter_wordle_appropriate, should_prefer_isograms, remove_word_from_list, save_words_to_file, get_word_information_score
-
-# Import wordfreq for real-world word frequency data
-try:
-    from wordfreq import word_frequency
-    WORDFREQ_AVAILABLE = True
-except ImportError:
-    WORDFREQ_AVAILABLE = False
-    print("Warning: wordfreq not available. Install with 'pip install wordfreq' for improved scoring.")
-
-# Get the repository root directory (3 levels up from this file)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-DATA_DIR = os.path.join(REPO_ROOT, 'data')
-LOGS_DIR = os.path.join(REPO_ROOT, 'logs')
+from ..core.common_utils import get_word_frequency_score, WORDFREQ_AVAILABLE, REPO_ROOT, DATA_DIR, LOGS_DIR
 
 # Default starting words for algorithms
 # To change the default starting words, modify these constants:
@@ -30,35 +18,6 @@ DEFAULT_STARTER = "crane"              # Used by ultra-efficient and some fallba
 
 # Popular Wordle starting words that users often choose
 POPULAR_WORDS = ["crane", "slate", "trace", "stare", "audio", "ratio", "penis"]
-
-def get_word_frequency_score(word: str, lang: str = "en") -> float:
-    """Get real-world frequency score for a word using wordfreq library.
-
-    Returns a logarithmic score where each unit represents a 10x frequency difference.
-    - Words not found: score = 0.0
-    - log10(1e-8) = -8 → score = 1.0 (baseline rare)
-    - log10(1e-7) = -7 → score = 2.0 (10x more common)
-    - log10(1e-2) = -2 → score = 7.0 (1,000,000x more common)
-
-    Uses 'large' wordlist (~321k words) for better coverage.
-    If wordfreq is not available, returns 2.5 as neutral score (middle range).
-    """
-    if not WORDFREQ_AVAILABLE:
-        return 2.5  # Neutral score in the new scale (between rare and common)
-
-    try:
-        # Get frequency using large wordlist for better coverage
-        freq = word_frequency(word, lang, wordlist="large")
-
-        if freq > 0:
-            # Use log10 and shift so -8 maps to 1.0
-            log_freq = math.log10(freq)
-            score = max(0.0, log_freq + 8.0)
-            return score
-        else:
-            return 0.0  # Word not found in frequency data
-    except Exception:
-        return 2.5  # Fallback score
 
 def score_words_by_frequency(words: List[str]) -> List[Tuple[str, float]]:
     """Score a list of words by their real-world frequency.
