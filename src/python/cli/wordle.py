@@ -1060,7 +1060,7 @@ def interactive_mode():
     print("\n" + "="*60)
     print("🎯 INTERACTIVE WORDLE SOLVER - MULTI-ALGORITHM MODE")
     print("="*60)
-    print("🤖 You'll see suggestions from all algorithms at each step!")
+    print("🤖 You'll see suggestions from all algorithms at each step.")
     print("📊 Each suggestion includes entropy and frequency scores.")
     print("🎮 Choose the word you want to play, or enter your own.")
     print("="*60)
@@ -1135,13 +1135,13 @@ def interactive_mode():
             play_multi_algorithm_game(solvers, algorithms, target, mode="automated")
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
-            print("Thanks for playing! 🎯")
+            print("Thanks for playing! 👋")
             interrupted = True
 
     elif target_choice == "2":
         # Random target word
         target = random.choice(word_list)
-        print(f"\n🎯 Random target word selected!")
+        print(f"\n🎯 Random target word selected.")
         print("🤖 AI algorithms will suggest words at each step...\n")
 
         try:
@@ -1149,25 +1149,25 @@ def interactive_mode():
             print(f"\n🎯 The target word was: {target.upper()}")
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
-            print("Thanks for playing! 🎯")
+            print("Thanks for playing! 👋")
             interrupted = True
 
     else:
         # Manual feedback mode (real Wordle)
         print(f"\n🎮 REAL WORDLE MODE - MULTI-ALGORITHM ASSISTANT")
         print("="*60)
-        print("🌐 Play on the real Wordle website and get suggestions from all algorithms!")
+        print("🌐 Play on the real Wordle website and get suggestions from all algorithms.")
         print("📝 Feedback format: G=Green (correct), Y=Yellow (wrong position), X=Gray (not in word)")
         print("❌ Special: R=Rejected (if Wordle doesn't accept the word)")
         print("📘 Example: CRANE -> XYGXX means C=gray, R=yellow, A=green, N=gray, E=gray")
-        print("🔄 Rejected words don't count toward your 6-guess limit!")
+        print("🔄 Rejected words don't count toward your 6-guess limit.")
         print("="*60)
 
         try:
             play_multi_algorithm_game(solvers, algorithms, None, mode="manual")
         except KeyboardInterrupt:
             # Exit immediately to "Thanks for playing!" message
-            print("Thanks for playing! 🎯")
+            print("Thanks for playing! 👋")
             interrupted = True
 
     # Skip "play again" prompt if user interrupted with Ctrl+C
@@ -1180,7 +1180,7 @@ def interactive_mode():
         except KeyboardInterrupt:
             pass
 
-    print("Thanks for playing! 🎯")
+    print("Thanks for playing! 👋")
 
 def play_multi_algorithm_game(solvers: dict, algorithms: dict, target: str = None, mode: str = "automated"):
     """Play a game showing suggestions from all algorithms."""
