@@ -65,12 +65,10 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
     if len(word) != len(guess) or len(feedback) != len(guess):
         return False
 
-    guess_counter = Counter(guess)
     word_counter = Counter(word)
 
     # Count how many of each letter should be in the target word
     required_letters = Counter()
-    forbidden_letters = set()
     position_requirements = {}  # position -> required letter
     position_forbidden = {}     # position -> set of forbidden letters
 
@@ -119,7 +117,7 @@ def is_valid_word(word: str, guess: str, feedback: str) -> bool:
 def load_words(filename: str = "words_alpha5.txt") -> List[str]:
     """Load words from a file."""
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             words = []
             for line in f.readlines():
                 word = line.strip().lower()
@@ -186,11 +184,11 @@ def remove_word_from_list(word_list: List[str], word_to_remove: str) -> List[str
 def save_words_to_file(filename: str, words: List[str]) -> bool:
     """Save words to a file, one per line."""
     try:
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             for word in words:
                 f.write(word + '\n')
         return True
-    except Exception as e:
+    except (OSError, IOError) as e:
         print(f"Error saving words to {filename}: {e}")
         return False
 
@@ -231,7 +229,7 @@ def get_word_information_score(word: str, possible_words: List[str]) -> float:
     return score
 
 
-def get_optimal_endgame_guess(possible_words: List[str], word_list: List[str]) -> str:
+def get_optimal_endgame_guess(possible_words: List[str], word_list: List[str]) -> str | None:
     """Get optimal guess when few possibilities remain."""
     if len(possible_words) <= 1:
         return possible_words[0] if possible_words else None
