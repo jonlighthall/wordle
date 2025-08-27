@@ -81,6 +81,8 @@ python3 -m src.python.cli.wordle
 # Analysis tools
 python3 -m src.python.analysis.find_best_entropy
 python3 -m src.python.analysis.find_best_letter_frequency
+python3 -m src.python.analysis.find_best_wordfreq
+python3 -m src.python.analysis.find_best_transition_point  # NEW: Transition analysis
 
 # Tests
 python3 -m tests.test_feedback
@@ -103,9 +105,16 @@ make
 
 ## Features
 
-- **Multiple Solving Strategies**: Entropy-based, frequency-based, and hybrid approaches
+- **Multiple Solving Strategies**:
+  - **Entropy-based**: Maximum information gain approach
+  - **Frequency-based**: Letter frequency and real-world word usage
+  - **Information-based**: Balanced information theory approach
+  - **Adaptive Hybrid**: Dynamic weighting of strategies by game stage
+  - **Optimal Transition**: 🆕 Empirically optimized strategy (entropy→wordfreq at ≤50 words)
+  - **Ultra Efficient**: Speed-optimized approach
 - **Interactive Mode**: Get AI assistance while playing Wordle
 - **Automated Testing**: Comprehensive testing against historical Wordle words
+- **Strategy Analysis**: 🆕 Transition point analysis to determine optimal switching strategies
 - **Word Analysis**: Find optimal starting words and strategies
 - **Fortran Implementation**: High-performance alternative solver
 - **Extensible Design**: Modular structure for easy enhancement
